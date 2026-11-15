@@ -185,3 +185,71 @@ protected final func DismembermentConditions() -> Bool {
   }
   return result;
 }
+
+// Story-appearance wound donor (Judy). Same technique as Collateral Damage's
+// WoundInject: the donor's wound resources are captured on its own
+// Resource/Load and assigned into whichever .app loads for the target path
+// (vanilla or a body-mod override). Nothing is constructed; a target file that
+// already has wounds is left alone, so other dismemberment mods win.
+// Donor provenance (local test asset, not for redistribution): wound resources
+// and per-appearance config copied from the base-game Tyger Claw appearance,
+// appearance names remapped to the installed Judy body mod's 21 entries.
+public class NPGWoundDonor extends IScriptable {
+  private let token: ref<ResourceToken>;
+  private let captured: Bool;
+  private let wounds: array<ref<entdismembermentWoundResource>>;
+  private let effects: array<ref<entdismembermentEffectResource>>;
+  private let config: entdismembermentWoundsConfigSet;
+  private let name: String;
+  private let reported: Bool;
+
+  public static func Create(target: ResRef, donor: ResRef, name: String) -> ref<NPGWoundDonor> {
+    let self = new NPGWoundDonor();
+    self.name = name;
+    let callbacks = GameInstance.GetCallbackSystem();
+    callbacks.RegisterCallback(n"Resource/Load", self, n"OnDonorLoad").AddTarget(ResourceTarget.Path(donor));
+    callbacks.RegisterCallback(n"Resource/Load", self, n"OnAppLoad").AddTarget(ResourceTarget.Path(target));
+    self.token = GameInstance.GetResourceDepot().LoadResource(donor);
+    return self;
+  }
+
+  private cb func OnDonorLoad(event: ref<ResourceEvent>) {
+    let donor = event.GetResource() as appearanceAppearanceResource;
+    if !IsDefined(donor) || ArraySize(donor.Wounds) == 0 { return; }
+    this.wounds = donor.Wounds;
+    this.effects = donor.DismEffects;
+    this.config = donor.DismWoundConfig;
+    this.captured = true;
+  }
+
+  private cb func OnAppLoad(event: ref<ResourceEvent>) {
+    let app = event.GetResource() as appearanceAppearanceResource;
+    if !IsDefined(app) || ArraySize(app.Wounds) > 0 { return; }
+    if !this.captured {
+      if !this.reported {
+        this.reported = true;
+        FTLog(s"[NPCOmegaGore] wound donor not ready for \(this.name)");
+      }
+      return;
+    }
+    app.Wounds = this.wounds;
+    app.DismEffects = this.effects;
+    app.DismWoundConfig = this.config;
+    if !this.reported {
+      this.reported = true;
+      FTLog(s"[NPCOmegaGore] wound data injected for \(this.name)");
+    }
+  }
+}
+
+public class NPGWoundInjector extends ScriptableService {
+  private let donors: array<ref<NPGWoundDonor>>;
+
+  private func Add(target: ResRef, donor: ResRef, name: String) {
+    ArrayPush(this.donors, NPGWoundDonor.Create(target, donor, name));
+  }
+
+  private cb func OnLoad() {
+    this.Add(r"base\\characters\\appearances\\main_npc\\judy.app", r"npcomegagore\\wound_donors\\judy.app", "judy");
+  }
+}
