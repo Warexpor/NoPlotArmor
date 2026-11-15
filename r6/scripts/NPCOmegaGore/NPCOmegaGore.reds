@@ -41,7 +41,9 @@ private final func PreProcess(hitEvent: ref<gameHitEvent>, cache: ref<CacheData>
   if !IsDefined(hitEvent) { return result; }
   let npc = hitEvent.target as NPCPuppet;
   if IsDefined(npc) && IsDefined(hitEvent.attackData) && IsDefined(hitEvent.attackData.GetInstigator()) && hitEvent.attackData.GetInstigator().IsPlayer() {
-    npc.NPCOmegaGore_RecordHit(result, hitEvent.attackData);
+    let dmg = hitEvent.attackComputed.GetTotalAttackValue(gamedataStatPoolType.Health);
+    let hp = GameInstance.GetStatPoolsSystem(npc.GetGame()).GetStatPoolValue(Cast<StatsObjectID>(npc.GetEntityID()), gamedataStatPoolType.Health);
+    npc.NPCOmegaGore_RecordHit(result, hitEvent.attackData, dmg, hp);
   }
   return result;
 }
@@ -69,7 +71,9 @@ public final func NPCOmegaGore_Describe() -> String {
   let god = GameInstance.GetGodModeSystem(this.GetGame());
   let hp = GameInstance.GetStatPoolsSystem(this.GetGame()).GetStatPoolValue(Cast<StatsObjectID>(id), gamedataStatPoolType.Health);
   let invStat = GameInstance.GetStatsSystem(this.GetGame()).GetStatValue(Cast<StatsObjectID>(id), gamedataStatType.IsInvulnerable);
-  return s"record=\(TDBID.ToStringDEBUG(this.GetRecordID())) entity=\(EntityID.ToDebugString(id)) hp%=\(hp) immortal=\(god.HasGodMode(id, gameGodModeType.Immortal)) invulnerable=\(god.HasGodMode(id, gameGodModeType.Invulnerable)) invulnerableStat=\(invStat) boss=\(this.IsBoss()) defeat=\(this.IsDefeatMechanicActive()) crowd=\(this.IsCrowd()) dismemberment=\(IsDefined(this.GetDismembermentComponent())) onHits=\(this.npgOnHitCount) hits=\(this.npgHitCount) hitInfo=[\(this.npgLastHit)] goreChecks=\(this.npgGoreCount) goreInfo=[\(this.npgLastGore)]";
+  let immSrc = god.GetGodModeSources(id, gameGodModeType.Immortal);
+  let invSrc = god.GetGodModeSources(id, gameGodModeType.Invulnerable);
+  return s"record=\(TDBID.ToStringDEBUG(this.GetRecordID())) entity=\(EntityID.ToDebugString(id)) hp%=\(hp) immortal=\(god.HasGodMode(id, gameGodModeType.Immortal)) immSrcN=\(ArraySize(immSrc)) invulnerable=\(god.HasGodMode(id, gameGodModeType.Invulnerable)) invSrcN=\(ArraySize(invSrc)) invulnerableStat=\(invStat) boss=\(this.IsBoss()) defeat=\(this.IsDefeatMechanicActive()) dead=\(this.IsDead()) defeated=\(ScriptedPuppet.IsDefeated(this)) aboutDie=\(this.IsAboutToDie()) aboutDef=\(this.IsAboutToBeDefeated()) crowd=\(this.IsCrowd()) dismemberment=\(IsDefined(this.GetDismembermentComponent())) onHits=\(this.npgOnHitCount) hits=\(this.npgHitCount) hitInfo=[\(this.npgLastHit)] goreChecks=\(this.npgGoreCount) goreInfo=[\(this.npgLastGore)] deaths=\(this.npgDeathCount) deathInfo=[\(this.npgLastDeath)]";
 }
 
 // The player's friendly-target flag drives weapon-safe and attack checks.
@@ -96,11 +100,15 @@ private let npgLastHit: String;
 private let npgGoreCount: Int32;
 @addField(NPCPuppet)
 private let npgLastGore: String;
+@addField(NPCPuppet)
+private let npgDeathCount: Int32;
+@addField(NPCPuppet)
+private let npgLastDeath: String;
 
 @addMethod(NPCPuppet)
-public final func NPCOmegaGore_RecordHit(accepted: Bool, data: ref<AttackData>) -> Void {
+public final func NPCOmegaGore_RecordHit(accepted: Bool, data: ref<AttackData>, dmg: Float, hp: Float) -> Void {
   this.npgHitCount += 1;
-  this.npgLastHit = s"preprocess=\(accepted) attack=\(EnumInt(data.GetAttackType())) friendly=\(data.HasFlag(hitFlag.FriendlyFire)) friendlyIgnored=\(data.HasFlag(hitFlag.FriendlyFireIgnored)) noDamage=\(data.HasFlag(hitFlag.DealNoDamage)) nonlethal=\(data.HasFlag(hitFlag.Nonlethal))";
+  this.npgLastHit = s"preprocess=\(accepted) dmg=\(dmg) hp=\(hp) attack=\(EnumInt(data.GetAttackType())) friendly=\(data.HasFlag(hitFlag.FriendlyFire)) friendlyIgnored=\(data.HasFlag(hitFlag.FriendlyFireIgnored)) immortalTgt=\(data.HasFlag(hitFlag.ImmortalTarget)) noDamage=\(data.HasFlag(hitFlag.DealNoDamage)) nonlethal=\(data.HasFlag(hitFlag.Nonlethal))";
 }
 
 @addMethod(NPCPuppet)
@@ -121,6 +129,13 @@ protected cb func OnHit(evt: ref<gameHitEvent>) -> Bool {
 public final func NPCOmegaGore_RecordGore(info: String) -> Void {
   this.npgGoreCount += 1;
   this.npgLastGore = info;
+}
+
+@wrapMethod(NPCPuppet)
+protected cb func OnDeath(evt: ref<gameDeathEvent>) -> Bool {
+  this.npgDeathCount += 1;
+  this.npgLastDeath = s"dead=\(this.IsDead()) defeated=\(ScriptedPuppet.IsDefeated(this))";
+  return wrappedMethod(evt);
 }
 
 @wrapMethod(HitReactionComponent)
