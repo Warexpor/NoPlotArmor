@@ -6,6 +6,7 @@ local pending = {}
 local diagnosticTimer = 0
 local lastDiagnostic = nil
 local catalog = require("catalog")
+local fireAuthApplied = false
 
 local function spawn()
   local player = Game.GetPlayer()
@@ -65,6 +66,19 @@ end)
 registerForEvent("onOverlayOpen", function() open = true end)
 registerForEvent("onOverlayClose", function() open = false end)
 registerForEvent("onUpdate", function(dt)
+  -- Authorize the player's own fire path: covers any native check that reads
+  -- these statuses instead of (or in addition to) the attack flags.
+  if not fireAuthApplied then
+    pcall(function()
+      local p = Game.GetPlayer()
+      if p then
+        StatusEffectHelper.ApplyStatusEffect(p, "BaseStatusEffect.IgnoreWeaponSafe")
+        StatusEffectHelper.ApplyStatusEffect(p, "BaseStatusEffect.DoNotBlockShootingOnFriendlyFire")
+        fireAuthApplied = true
+        print("[NPCOmegaGore] Fire authorization statuses applied to player.")
+      end
+    end)
+  end
   diagnosticTimer = diagnosticTimer + dt
   if diagnosticTimer >= 0.5 then
     diagnosticTimer = 0

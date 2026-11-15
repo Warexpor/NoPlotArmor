@@ -34,8 +34,20 @@ public final func PreAttack() {
     this.AddFlag(hitFlag.FriendlyFire, n"NPCOmegaGore");
     this.AddFlag(hitFlag.IgnoreImmortalityModes, n"NPCOmegaGore");
     this.AddFlag(hitFlag.IgnoreStatPoolCustomLimit, n"NPCOmegaGore");
+    // Fire-path telemetry: proves whether script preactions run for a given
+    // weapon. Throttled to 3 logs per player session.
+    let player = this.GetInstigator() as PlayerPuppet;
+    if IsDefined(player) && player.npgPreAttackLogs < 3 {
+      player.npgPreAttackLogs += 1;
+      FTLog(s"[NPCOmegaGore] PreAttack attack=\(EnumInt(this.GetAttackType())) friendly=\(this.HasFlag(hitFlag.FriendlyFire)) n=\(player.npgPreAttackLogs)");
+    }
   }
 }
+
+@addField(PlayerPuppet)
+public let npgPreAttackLogs: Int32;
+@addField(PlayerPuppet)
+public let npgFlagLogs: Int32;
 
 @wrapMethod(DamageSystem)
 private final func PreProcess(hitEvent: ref<gameHitEvent>, cache: ref<CacheData>) -> Bool {
@@ -58,10 +70,24 @@ private final func PreProcess(hitEvent: ref<gameHitEvent>, cache: ref<CacheData>
 // Add ours afterward so it survives the quick-exit check.
 @wrapMethod(DamageSystem)
 private final func ModifyHitFlagsForPlayer(hitEvent: ref<gameHitEvent>, cache: ref<CacheData>) -> Void {
+  // Capture the incoming flag state before vanilla strips it. Throttled.
+  let incoming = false;
+  let atk = -1;
+  let inst = IsDefined(hitEvent) && IsDefined(hitEvent.attackData) ? hitEvent.attackData.GetInstigator() : null;
+  if IsDefined(inst) && inst.IsPlayer() {
+    incoming = hitEvent.attackData.HasFlag(hitFlag.FriendlyFire);
+    atk = EnumInt(hitEvent.attackData.GetAttackType());
+  }
   wrappedMethod(hitEvent, cache);
-  if IsDefined(hitEvent) && IsDefined(hitEvent.target as NPCPuppet) && IsDefined(hitEvent.attackData)
-    && IsDefined(hitEvent.attackData.GetInstigator()) && hitEvent.attackData.GetInstigator().IsPlayer() {
-    hitEvent.attackData.AddFlag(hitFlag.FriendlyFire, n"NPCOmegaGore");
+  if IsDefined(inst) && inst.IsPlayer() {
+    let player = inst as PlayerPuppet;
+    if IsDefined(player) && player.npgFlagLogs < 3 {
+      player.npgFlagLogs += 1;
+      FTLog(s"[NPCOmegaGore] HitFlagsIn attack=\(atk) friendlyIn=\(incoming) n=\(player.npgFlagLogs)");
+    };
+    if IsDefined(hitEvent) && IsDefined(hitEvent.target as NPCPuppet) && IsDefined(hitEvent.attackData) {
+      hitEvent.attackData.AddFlag(hitFlag.FriendlyFire, n"NPCOmegaGore");
+    }
   }
 }
 
