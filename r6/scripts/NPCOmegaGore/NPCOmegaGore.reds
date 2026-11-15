@@ -5,7 +5,13 @@ module NPCOmegaGore
 @wrapMethod(NPCPuppet)
 protected cb func OnGameAttached() -> Bool {
   let result = wrappedMethod();
-  GameInstance.GetGodModeSystem(this.GetGame()).EnableOverride(this.GetEntityID(), gameGodModeType.Mortal, n"NPCOmegaGore");
+  let godSys = GameInstance.GetGodModeSystem(this.GetGame());
+  godSys.EnableOverride(this.GetEntityID(), gameGodModeType.Mortal, n"NPCOmegaGore");
+  // Spawned copies and ambient NPCs are often protected only by the Default
+  // source. Quest- or scene-owned sources are left intact: removing those
+  // would break quests in ways a respawn cannot fix.
+  godSys.RemoveGodMode(this.GetEntityID(), gameGodModeType.Immortal, n"Default");
+  godSys.RemoveGodMode(this.GetEntityID(), gameGodModeType.Invulnerable, n"Default");
   return result;
 }
 
@@ -43,7 +49,7 @@ private final func PreProcess(hitEvent: ref<gameHitEvent>, cache: ref<CacheData>
   if IsDefined(npc) && IsDefined(hitEvent.attackData) && IsDefined(hitEvent.attackData.GetInstigator()) && hitEvent.attackData.GetInstigator().IsPlayer() {
     let dmg = hitEvent.attackComputed.GetTotalAttackValue(gamedataStatPoolType.Health);
     let hp = GameInstance.GetStatPoolsSystem(npc.GetGame()).GetStatPoolValue(Cast<StatsObjectID>(npc.GetEntityID()), gamedataStatPoolType.Health);
-    npc.NPCOmegaGore_RecordHit(result, hitEvent.attackData, dmg, hp);
+    npc.NPCOmegaGore_RecordHit(result, hitEvent.attackData, dmg, hp, hitEvent.projectionPipeline);
   }
   return result;
 }
@@ -87,7 +93,9 @@ public final func IsAimingAtFriendly() -> Bool {
 // These counters are observed by the CET target sampler. onHits increments when
 // the engine delivers a collision hit to the NPC (GameObject.OnHit), hits
 // increments when the hit reaches DamageSystem.PreProcess, goreChecks when
-// dismemberment conditions are evaluated. onHits>0 with hits==0 means
+// dismemberment conditions are evaluated. hitInfo proj=true means a UI damage
+// preview, not a real hit: the projection pipeline evaluates PreProcess
+// without dealing damage. onHits>0 with hits==0 means
 // collision works but the damage pipeline rejects the hit; both zero during
 // live fire means shots are still rejected before collision.
 @addField(NPCPuppet)
@@ -106,9 +114,9 @@ private let npgDeathCount: Int32;
 private let npgLastDeath: String;
 
 @addMethod(NPCPuppet)
-public final func NPCOmegaGore_RecordHit(accepted: Bool, data: ref<AttackData>, dmg: Float, hp: Float) -> Void {
+public final func NPCOmegaGore_RecordHit(accepted: Bool, data: ref<AttackData>, dmg: Float, hp: Float, proj: Bool) -> Void {
   this.npgHitCount += 1;
-  this.npgLastHit = s"preprocess=\(accepted) dmg=\(dmg) hp=\(hp) attack=\(EnumInt(data.GetAttackType())) friendly=\(data.HasFlag(hitFlag.FriendlyFire)) friendlyIgnored=\(data.HasFlag(hitFlag.FriendlyFireIgnored)) immortalTgt=\(data.HasFlag(hitFlag.ImmortalTarget)) noDamage=\(data.HasFlag(hitFlag.DealNoDamage)) nonlethal=\(data.HasFlag(hitFlag.Nonlethal))";
+  this.npgLastHit = s"preprocess=\(accepted) proj=\(proj) dmg=\(dmg) hp=\(hp) attack=\(EnumInt(data.GetAttackType())) friendly=\(data.HasFlag(hitFlag.FriendlyFire)) friendlyIgnored=\(data.HasFlag(hitFlag.FriendlyFireIgnored)) immortalTgt=\(data.HasFlag(hitFlag.ImmortalTarget)) noDamage=\(data.HasFlag(hitFlag.DealNoDamage)) nonlethal=\(data.HasFlag(hitFlag.Nonlethal))";
 }
 
 @addMethod(NPCPuppet)
