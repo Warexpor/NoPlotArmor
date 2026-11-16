@@ -83,7 +83,19 @@ private final func ModifyHitFlagsForPlayer(hitEvent: ref<gameHitEvent>, cache: r
     let player = inst as PlayerPuppet;
     if IsDefined(player) && player.npgFlagLogs < 3 {
       player.npgFlagLogs += 1;
-      FTLog(s"[NPCOmegaGore] HitFlagsIn attack=\(atk) friendlyIn=\(incoming) n=\(player.npgFlagLogs)");
+      // Identify the exact weapon + attack records behind this shot. Previews
+      // carry them too, so even a non-colliding shot reveals its records.
+      let wStr = "none";
+      let aStr = "none";
+      let w = hitEvent.attackData.GetWeapon();
+      if IsDefined(w) {
+        wStr = TDBID.ToStringDEBUG(ItemID.GetTDBID(w.GetItemID()));
+      }
+      let attackDef = hitEvent.attackData.GetAttackDefinition();
+      if IsDefined(attackDef) {
+        aStr = TDBID.ToStringDEBUG(attackDef.GetRecord().GetID());
+      }
+      FTLog(s"[NPCOmegaGore] HitFlagsIn attack=\(atk) friendlyIn=\(incoming) weapon=\(wStr) attackRec=\(aStr) n=\(player.npgFlagLogs)");
     };
     if IsDefined(hitEvent) && IsDefined(hitEvent.target as NPCPuppet) && IsDefined(hitEvent.attackData) {
       hitEvent.attackData.AddFlag(hitFlag.FriendlyFire, n"NPCOmegaGore");
