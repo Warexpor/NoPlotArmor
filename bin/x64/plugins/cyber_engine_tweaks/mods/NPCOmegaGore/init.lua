@@ -47,6 +47,39 @@ local function clear()
   status = ok and result or ("Cleanup failed: " .. tostring(result))
 end
 
+local function logWeaponAttack()
+  local ok, result = pcall(function()
+    local p = Game.GetPlayer()
+    if not p then return "Load a save first." end
+    local out = {}
+    local function add(s) out[#out + 1] = tostring(s) end
+    local okW, weapon = pcall(function() return ScriptedPuppet.GetWeaponRight(p) end)
+    if not okW or not weapon then return "No active weapon (fists?) " .. tostring(weapon) end
+    add("weapon=" .. tostring(weapon:GetClassName()))
+    local okA, attack = pcall(function() return weapon:GetCurrentAttack() end)
+    if not okA or not attack then return table.concat(out, " ") .. " no-current-attack " .. tostring(attack) end
+    local okR, rec = pcall(function() return attack:GetRecord() end)
+    if not okR or not rec then return table.concat(out, " ") .. " no-attack-record" end
+    add("attack=" .. tostring(rec:GetID()))
+    local okH, flags = pcall(function() return rec:HitFlags() end)
+    if okH and flags then
+      local names = {}
+      for _, f in ipairs(flags) do names[#names + 1] = tostring(f) end
+      add("hitflags=[" .. table.concat(names, ",") .. "]")
+    else
+      add("hitflags=?")
+    end
+    local okT, atype = pcall(function() return rec:AttackType() end)
+    if okT and atype then
+      local okTT, ttype = pcall(function() return atype:Type() end)
+      if okTT then add("type=" .. tostring(ttype)) end
+    end
+    return table.concat(out, " ")
+  end)
+  status = ok and tostring(result) or ("Weapon log failed: " .. tostring(result))
+  print("[NPCOmegaGore] WEAPON " .. status)
+end
+
 local function inspectTarget()
   local ok, result = pcall(function()
     local p = Game.GetPlayer()
@@ -123,6 +156,7 @@ registerForEvent("onDraw", function()
     ImGui.SameLine()
     if ImGui.Button("Remove spawned copies") then clear() end
     if ImGui.Button("Inspect NPC in crosshairs") then inspectTarget() end
+    if ImGui.Button("Log current weapon attack") then logWeaponAttack() end
     ImGui.TextWrapped(status)
     ImGui.Separator()
     query = ImGui.InputText("Search names or records", query, 100)
