@@ -27,6 +27,19 @@ protected cb func OnPreUninitialize(evt: ref<entPreUninitializeEvent>) -> Bool {
 // Vanilla EffectPreAction_PreAttack only sets FriendlyFire for special
 // WithFriendlyFire effects, and DamageSystem.ModifyHitFlagsForPlayer removes it.
 // Keep the late re-add below as a safety net for the post-collision pipeline.
+// Diagnostic throttles live on the player and persist in the save, so without
+// a reset they stay exhausted forever after the first session. Reset them
+// whenever the player (re)attaches: fresh budget every load, still bounded
+// per session.
+@wrapMethod(PlayerPuppet)
+protected cb func OnGameAttached() -> Bool {
+  let result = wrappedMethod();
+  this.npgPreAttackLogs = 0;
+  this.npgFlagLogs = 0;
+  FTLog("[NPCOmegaGore] telemetry budget reset");
+  return result;
+}
+
 @wrapMethod(AttackData)
 public final func PreAttack() {
   wrappedMethod();
