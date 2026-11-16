@@ -27,17 +27,20 @@ protected cb func OnPreUninitialize(evt: ref<entPreUninitializeEvent>) -> Bool {
 // Vanilla EffectPreAction_PreAttack only sets FriendlyFire for special
 // WithFriendlyFire effects, and DamageSystem.ModifyHitFlagsForPlayer removes it.
 // Keep the late re-add below as a safety net for the post-collision pipeline.
-// Diagnostic throttles live on the player and persist in the save, so without
-// a reset they stay exhausted forever after the first session. Reset them
-// whenever the player (re)attaches: fresh budget every load, still bounded
-// per session.
-@wrapMethod(PlayerPuppet)
-protected cb func OnGameAttached() -> Bool {
-  let result = wrappedMethod();
-  this.npgPreAttackLogs = 0;
-  this.npgFlagLogs = 0;
-  FTLog("[NPCOmegaGore] telemetry budget reset");
-  return result;
+// Diagnostic throttles live on the player and persist in the save, so a plain
+// counter stays exhausted forever after the first session. Instead the budget
+// refreshes whenever two minutes of game time pass without logging.
+@addField(PlayerPuppet)
+public let npgLastLogAt: Float;
+
+@addMethod(PlayerPuppet)
+public final func NPG_LogRefresh() -> Void {
+  let now = EngineTime.ToFloat(GameInstance.GetTimeSystem(this.GetGame()).GetSimTime());
+  if now < this.npgLastLogAt || now - this.npgLastLogAt > 120.0 {
+    this.npgPreAttackLogs = 0;
+    this.npgFlagLogs = 0;
+    this.npgLastLogAt = now;
+  }
 }
 
 @wrapMethod(AttackData)
@@ -48,11 +51,14 @@ public final func PreAttack() {
     this.AddFlag(hitFlag.IgnoreImmortalityModes, n"NPCOmegaGore");
     this.AddFlag(hitFlag.IgnoreStatPoolCustomLimit, n"NPCOmegaGore");
     // Fire-path telemetry: proves whether script preactions run for a given
-    // weapon. Throttled to 3 logs per player session.
+    // weapon. Throttled: 3 logs per 2 minutes of game time.
     let player = this.GetInstigator() as PlayerPuppet;
-    if IsDefined(player) && player.npgPreAttackLogs < 3 {
-      player.npgPreAttackLogs += 1;
-      FTLog(s"[NPCOmegaGore] PreAttack attack=\(EnumInt(this.GetAttackType())) friendly=\(this.HasFlag(hitFlag.FriendlyFire)) n=\(player.npgPreAttackLogs)");
+    if IsDefined(player) {
+      player.NPG_LogRefresh();
+      if player.npgPreAttackLogs < 3 {
+        player.npgPreAttackLogs += 1;
+        FTLog(s"[NPCOmegaGore] PreAttack attack=\(EnumInt(this.GetAttackType())) friendly=\(this.HasFlag(hitFlag.FriendlyFire)) n=\(player.npgPreAttackLogs)");
+      }
     }
   }
 }
@@ -94,8 +100,10 @@ private final func ModifyHitFlagsForPlayer(hitEvent: ref<gameHitEvent>, cache: r
   wrappedMethod(hitEvent, cache);
   if IsDefined(inst) && inst.IsPlayer() {
     let player = inst as PlayerPuppet;
-    if IsDefined(player) && player.npgFlagLogs < 3 {
-      player.npgFlagLogs += 1;
+    if IsDefined(player) {
+      player.NPG_LogRefresh();
+      if player.npgFlagLogs < 3 {
+        player.npgFlagLogs += 1;
       // Identify the exact weapon + attack records behind this shot. Previews
       // carry them too, so even a non-colliding shot reveals its records.
       let wStr = "none";
@@ -113,6 +121,7 @@ private final func ModifyHitFlagsForPlayer(hitEvent: ref<gameHitEvent>, cache: r
     if IsDefined(hitEvent) && IsDefined(hitEvent.target as NPCPuppet) && IsDefined(hitEvent.attackData) {
       hitEvent.attackData.AddFlag(hitFlag.FriendlyFire, n"NPCOmegaGore");
     }
+  }
   }
 }
 
