@@ -7,6 +7,10 @@ Use a disposable manual save in free roam. Do NOT use your main save: killing qu
 1. Load the disposable save.
 2. Open the CET overlay. The `NPCOmegaGore` window lists the catalog.
 3. Spawn ONE `Character.Judy` (friendly/story copy) and, if you want a control, ONE generic enemy (e.g. a Tyger Claw from the catalog).
+4. Asset check first (before shooting — proves wound data is present). With Judy targeted, open the CET console and run:
+   `n=Game.FindEntityByID(Game.GetDynamicEntitySystem():GetTaggedIDs("NPCOmegaGore_Spawn")[1]); print(n:NPCOmegaGore_Describe()); DismembermentComponent.RequestDismemberment(n,gameDismBodyPart.LEFT_ARM,gameDismWoundType.COARSE,Vector4.new(0,0,0,0),false,"",0)`
+   then `c=n:GetDismembermentComponent():GetDismemberedLimbCount(); print(c.fleshDismemberments,c.cyberDismemberments)`
+   Note the two numbers (nonzero flesh = donor injection worked).
 4. Aim at each spawned NPC so the CET `TARGET` sampler logs one line per change. Press **Inspect NPC in crosshairs** on each BEFORE shooting and note the `hp`, `immSrcN`, `defeat`, `onHits`, `hits`, `goreChecks`, `deaths` values.
 
 ## Shots to fire (per NPC)
