@@ -7,6 +7,7 @@ local diagnosticTimer = 0
 local lastDiagnostic = nil
 local catalog = require("catalog")
 local fireAuthApplied = false
+local hitFlagsFlipped = false
 
 local function spawn()
   local player = Game.GetPlayer()
@@ -110,6 +111,40 @@ registerForEvent("onUpdate", function(dt)
         fireAuthApplied = true
         print("[NPCOmegaGore] Fire authorization statuses applied to player.")
       end
+    end)
+  end
+  -- Record-level fix (backup for the REDscript ScriptableTweak): the native
+  -- bullet path reads the attack record's own HitFlags, where per-shot
+  -- runtime flags never reach. Runs at boot, no save needed.
+  if not hitFlagsFlipped then
+    pcall(function()
+      local rec = "Attacks.Bullet_GameEffect"
+      local r = TweakDB:GetRecord(rec)
+      if not r then print("[NPCOmegaGore] TweakDB record missing: " .. rec); return end
+      local flags = {}
+      local okH, cur = pcall(function() return r:HitFlags() end)
+      if okH and cur then
+        for _, f in ipairs(cur) do flags[#flags + 1] = tostring(f) end
+      else
+        local okF, flat = pcall(function() return TweakDB:GetFlat(rec .. ".hitFlags") end)
+        if okF and type(flat) == "table" then
+          for _, f in ipairs(flat) do flags[#flags + 1] = tostring(f) end
+        end
+      end
+      for _, f in ipairs(flags) do
+        if f == "FriendlyFire" then print("[NPCOmegaGore] record HitFlags already set"); hitFlagsFlipped = true; return end
+      end
+      flags[#flags + 1] = "FriendlyFire"
+      local okS = pcall(function() TweakDB:SetFlat(rec .. ".hitFlags", flags) end)
+      local okU, resU = pcall(function() return TweakDB:UpdateRecord(rec) end)
+      print("[NPCOmegaGore] record flip set=" .. tostring(okS) .. " update=" .. tostring(okU) .. ":" .. tostring(resU))
+      local okV, verify = pcall(function() return TweakDB:GetRecord(rec):HitFlags() end)
+      if okV and verify then
+        local names = {}
+        for _, f in ipairs(verify) do names[#names + 1] = tostring(f) end
+        print("[NPCOmegaGore] record verify HitFlags=[" .. table.concat(names, ",") .. "]")
+      end
+      hitFlagsFlipped = true
     end)
   end
   diagnosticTimer = diagnosticTimer + dt
