@@ -206,6 +206,37 @@ protected cb func OnDeath(evt: ref<gameDeathEvent>) -> Bool {
   return wrappedMethod(evt);
 }
 
+// TweakDB fix attempt for living-friendly bullet collision: the runtime
+// FriendlyFire flag is set from creation yet bullets still ghost friendlies,
+// and no attack record uses the WithFriendlyFire effector. The remaining
+// record-level lever is the attack's own HitFlags. This flips FriendlyFire
+// onto the shared hitscan record at boot (runtime only, reverts if removed).
+public class NPGAttackFlagTweak extends ScriptableTweak {
+  protected cb func OnApply() -> Void {
+    let id = t"Attacks.Bullet_GameEffect";
+    let rec = TweakDBInterface.GetAttackRecord(id);
+    if !IsDefined(rec) {
+      FTLog("[NPCOmegaGore] attack record missing");
+      return;
+    }
+    let cur = rec.HitFlags();
+    let i = 0;
+    while i < ArraySize(cur) {
+      if Equals(cur[i], "FriendlyFire") {
+        FTLog("[NPCOmegaGore] FriendlyFire already present on Bullet_GameEffect");
+        return;
+      }
+      i += 1;
+    }
+    ArrayPush(cur, "FriendlyFire");
+    if TweakDBManager.SetFlat(id + t".hitFlags", cur) && TweakDBManager.UpdateRecord(id) {
+      FTLog("[NPCOmegaGore] FriendlyFire added to Bullet_GameEffect");
+    } else {
+      FTLog("[NPCOmegaGore] FAILED to set hitFlags flat on Bullet_GameEffect");
+    }
+  }
+}
+
 @wrapMethod(HitReactionComponent)
 protected final func DismembermentConditions() -> Bool {
   let result = wrappedMethod();
