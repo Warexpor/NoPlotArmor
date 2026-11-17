@@ -82,4 +82,4 @@ Legacy (from older names, remove if present):
 ## Versioning
 
 See `CHANGELOG.md`. This is v0.2.0.
-License: MIT for scripts in this repo. Game assets belong to CD PROJEKT RED.
+License: GPL-3.0 for scripts in this repo (0.2.0 zip still carries the original MIT text; GPL applies from here on). Game assets belong to CD PROJEKT RED.
