@@ -588,7 +588,7 @@ public class NPAAttackFlagTweak extends ScriptableTweak {
 private let npaScaledHealthThresholds: Bool;
 @wrapMethod(HitReactionComponent)
 protected final func ProcessWoundsAndDismemberment() -> Void {
-  if !this.npaScaledHealthThresholds && IsDefined(this.m_ownerNPC)
+  if !this.npaScaledHealthThresholds && IsDefined(this.m_ownerNPC) && !this.m_ownerNPC.IsCharacterChildren()
     && NPAControl.Enabled(this.m_ownerNPC.GetGame())
     && (this.m_ownerNPC.HasTag(n"NoPlotArmor_Spawn") || this.m_ownerNPC.HasTag(n"NPCOmegaGore_Spawn") || this.m_ownerNPC.HasTag(n"OmegaNPC_Spawn")) && this.m_totalHealth > 0.0 {
     let id = Cast<StatsObjectID>(this.m_ownerNPC.GetEntityID());
@@ -781,6 +781,8 @@ public class NPAUniversalWounds extends IScriptable {
   // Known story names first (covers custom outfits whose path keeps the name,
   // e.g. hyst judy/panam variants), then filename body-type suffixes.
   private func PickDonor(path: String) -> Int32 {
+    // Kids stay whole by design: never inject wounds into child appearances.
+    if StrContains(path, "kid") || StrContains(path, "child") { return 0; }
     if StrContains(path, "judy") || StrContains(path, "panam") || StrContains(path, "rogue")
       || StrContains(path, "evelyn") || StrContains(path, "misty") || StrContains(path, "clair")
       || StrContains(path, "meredith") || StrContains(path, "elizabeth_peralez") || StrContains(path, "alt")
