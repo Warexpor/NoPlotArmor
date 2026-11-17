@@ -770,7 +770,8 @@ public class NPAUniversalWounds extends IScriptable {
       || StrContains(path, "celebrity_chrome") || StrContains(path, "us_cracks")
       || StrContains(path, "myers") || StrContains(path, "alex")
       || StrContains(path, "wakako") || StrContains(path, "hanako") || StrContains(path, "michiko")
-      || StrContains(path, "stout") { return 2; }
+      || StrContains(path, "stout") || StrContains(path, "brigitte") || StrContains(path, "voodoo_queen")
+      || StrContains(path, "sasquatch") { return 2; }
     if StrContains(path, "jackie") || StrContains(path, "takemura") || StrContains(path, "river")
       || StrContains(path, "kerry") || StrContains(path, "victor") || StrContains(path, "dex")
       || StrContains(path, "saul") || StrContains(path, "jefferson") || StrContains(path, "8ug8ear")
@@ -782,7 +783,9 @@ public class NPAUniversalWounds extends IScriptable {
       || StrContains(path, "thompson") || StrContains(path, "weldon")
       || StrContains(path, "josh") || StrContains(path, "psycho") || StrContains(path, "sebastian")
       || StrContains(path, "silverhand") || StrContains(path, "placide") || StrContains(path, "royce")
-      || StrContains(path, "dumdum") || StrContains(path, "brick") { return 1; }
+      || StrContains(path, "dumdum") || StrContains(path, "brick")
+      || StrContains(path, "hellman") || StrContains(path, "haru_kasai")
+      || StrContains(path, "oda") || StrContains(path, "cyberninja") { return 1; }
     if StrContains(path, "_wa") || StrContains(path, "_wb") || StrContains(path, "_waf") { return 2; }
     if StrContains(path, "woman") || StrContains(path, "_fa") { return 2; }
     if StrContains(path, "_ma") || StrContains(path, "_mb") || StrContains(path, "_mm") { return 1; }
