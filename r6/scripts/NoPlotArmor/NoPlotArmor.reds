@@ -25,6 +25,12 @@ public class NPAControl extends ScriptableService {
     return value;
   }
   public final func Register(npc: wref<NPCPuppet>) -> Void {
+    if !IsDefined(npc) { return; }
+    // Children from older saves may carry our Mortal override; strip it once.
+    if npc.IsCharacterChildren() {
+      if npc.npaProtectionApplied { npc.NPA_RemoveProtection(); }
+      return;
+    }
     RWLock.Acquire(this.lock);
     let i = 0;
     while i < ArraySize(this.npcs) {
@@ -56,6 +62,11 @@ public class NPAControl extends ScriptableService {
     RWLock.Release(this.lock);
   }
   public final func RefreshTarget(npc: wref<NPCPuppet>) -> Void {
+    if !IsDefined(npc) { return; }
+    if npc.IsCharacterChildren() {
+      if npc.npaProtectionApplied { npc.NPA_RemoveProtection(); }
+      return;
+    }
     RWLock.Acquire(this.lock);
     if !this.disabled && IsDefined(npc) {
       // Some quest actors already exist when the service becomes available.
@@ -102,6 +113,9 @@ private let npaRemovedInvulnerableOverrides: array<CName>;
 @addMethod(NPCPuppet)
 public final func NPA_ApplyProtection() -> Void {
   if this.npaProtectionApplied { return; }
+  // Children stay protected by design: the engine ghosts hits on them before
+  // any damage pipeline, and this mod never overrides that.
+  if this.IsCharacterChildren() { return; }
   let god = GameInstance.GetGodModeSystem(this.GetGame());
   let id = this.GetEntityID();
   god.EnableOverride(id, gameGodModeType.Mortal, n"NoPlotArmor");
@@ -112,6 +126,7 @@ public final func NPA_ApplyProtection() -> Void {
 // actually removed so the master switch can restore it while the NPC exists.
 @addMethod(NPCPuppet)
 public final func NPA_RefreshProtection() -> Void {
+  if this.IsCharacterChildren() { return; }
   let god = GameInstance.GetGodModeSystem(this.GetGame());
   let id = this.GetEntityID();
   let sources = god.GetGodModeSources(id, gameGodModeType.Immortal);
@@ -281,6 +296,9 @@ private final func NPA_RestoreShotTarget() -> Void {
 @addMethod(PlayerPuppet)
 public final func NPA_UpdateShotTarget(candidate: wref<GameObject>, dt: Float) -> Void {
   let npc = candidate as NPCPuppet;
+  if IsDefined(npc) && npc.IsCharacterChildren() {
+    npc = null;
+  }
   if !IsDefined(npc) || npc.IsDead() {
     npc = null;
   }
@@ -318,7 +336,8 @@ public final func NPA_UpdateShotTarget(candidate: wref<GameObject>, dt: Float) -
 
 @wrapMethod(DamageSystem)
 private final func PreProcess(hitEvent: ref<gameHitEvent>, cache: ref<CacheData>) -> Bool {
-  if IsDefined(hitEvent) && IsDefined(hitEvent.target as NPCPuppet) && NPAControl.Enabled(hitEvent.target.GetGame()) && IsDefined(hitEvent.attackData) {
+  let preNpc = IsDefined(hitEvent) ? hitEvent.target as NPCPuppet : null;
+  if IsDefined(preNpc) && !preNpc.IsCharacterChildren() && NPAControl.Enabled(preNpc.GetGame()) && IsDefined(hitEvent.attackData) {
     hitEvent.attackData.AddFlag(hitFlag.IgnoreImmortalityModes, n"NoPlotArmor");
     hitEvent.attackData.AddFlag(hitFlag.IgnoreStatPoolCustomLimit, n"NoPlotArmor");
   }
@@ -366,7 +385,7 @@ private final func ModifyHitFlagsForPlayer(hitEvent: ref<gameHitEvent>, cache: r
       }
       FTLog(s"[NoPlotArmor] HitFlagsIn attack=\(atk) friendlyIn=\(incoming) weapon=\(wStr) attackRec=\(aStr) n=\(player.npaFlagLogs)");
     };
-    if IsDefined(hitEvent) && IsDefined(hitEvent.target as NPCPuppet) && NPAControl.Enabled(hitEvent.target.GetGame()) && IsDefined(hitEvent.attackData) {
+    if IsDefined(hitEvent) && IsDefined(hitEvent.target as NPCPuppet) && !( (hitEvent.target as NPCPuppet).IsCharacterChildren() ) && NPAControl.Enabled(hitEvent.target.GetGame()) && IsDefined(hitEvent.attackData) {
       hitEvent.attackData.AddFlag(hitFlag.FriendlyFire, n"NoPlotArmor");
     }
   }
@@ -385,14 +404,14 @@ protected final func CanDieCondition(opt doNotCheckAttackData: Bool) -> Bool {
       return wrappedMethod(doNotCheckAttackData);
     }
   }
-  if IsDefined(this.m_ownerNPC) && NPAControl.Enabled(this.m_ownerNPC.GetGame()) { return true; }
+  if IsDefined(this.m_ownerNPC) && !this.m_ownerNPC.IsCharacterChildren() && NPAControl.Enabled(this.m_ownerNPC.GetGame()) { return true; }
   return wrappedMethod(doNotCheckAttackData);
 }
 
 // Called only for the spawner's tagged entities, never quest-owned originals.
 @addMethod(NPCPuppet)
 public final func NPA_NeutralizeSpawn(player: wref<PlayerPuppet>) -> Void {
-  if !IsDefined(player) || this.IsDead() { return; }
+  if !IsDefined(player) || this.IsDead() || this.IsCharacterChildren() { return; }
   GameObject.ChangeAttitudeToNeutral(this, player);
   GameObject.ChangeAttitudeToNeutral(player, this);
 }
@@ -404,7 +423,7 @@ private let npaSpawnHealthAdjusted: Bool;
 @addMethod(NPCPuppet)
 public final func NPA_AdjustSpawnHealth() -> Bool {
   if this.npaSpawnHealthAdjusted { return true; }
-  if this.IsBoss() { this.npaSpawnHealthAdjusted = true; return true; }
+  if this.IsBoss() || this.IsCharacterChildren() { this.npaSpawnHealthAdjusted = true; return true; }
   let id = Cast<StatsObjectID>(this.GetEntityID());
   let pools = GameInstance.GetStatPoolsSystem(this.GetGame());
   let stats = GameInstance.GetStatsSystem(this.GetGame());
@@ -432,7 +451,7 @@ public final func NoPlotArmor_Describe() -> String {
   let limbs: DismemberedLimbCount;
   if IsDefined(component) { limbs = component.GetDismemberedLimbCount(); }
   let spawned = this.HasTag(n"NoPlotArmor_Spawn") || this.HasTag(n"NPCOmegaGore_Spawn") || this.HasTag(n"OmegaNPC_Spawn");
-  return s"record=\(TDBID.ToStringDEBUG(this.GetRecordID())) entity=\(EntityID.ToDebugString(id)) spawned=\(spawned) appearance=\(this.GetCurrentAppearanceName()) hp%=\(hp) immortal=\(god.HasGodMode(id, gameGodModeType.Immortal)) immSrcN=\(ArraySize(immSrc)) invulnerable=\(god.HasGodMode(id, gameGodModeType.Invulnerable)) invSrcN=\(ArraySize(invSrc)) invulnerableStat=\(invStat) boss=\(this.IsBoss()) defeat=\(this.IsDefeatMechanicActive()) dead=\(this.IsDead()) defeated=\(ScriptedPuppet.IsDefeated(this)) aboutDie=\(this.IsAboutToDie()) aboutDef=\(this.IsAboutToBeDefeated()) crowd=\(this.IsCrowd()) dismemberment=\(IsDefined(component)) fleshLimbs=\(limbs.fleshDismemberments) cyberLimbs=\(limbs.cyberDismemberments) onHits=\(this.npaOnHitCount) hits=\(this.npaHitCount) hitInfo=[\(this.npaLastHit)] goreChecks=\(this.npaGoreCount) goreInfo=[\(this.npaLastGore)] deaths=\(this.npaDeathCount) deathInfo=[\(this.npaLastDeath)]";
+  return s"record=\(TDBID.ToStringDEBUG(this.GetRecordID())) entity=\(EntityID.ToDebugString(id)) spawned=\(spawned) appearance=\(this.GetCurrentAppearanceName()) hp%=\(hp) immortal=\(god.HasGodMode(id, gameGodModeType.Immortal)) immSrcN=\(ArraySize(immSrc)) invulnerable=\(god.HasGodMode(id, gameGodModeType.Invulnerable)) invSrcN=\(ArraySize(invSrc)) invulnerableStat=\(invStat) boss=\(this.IsBoss()) child=\(this.IsCharacterChildren()) defeat=\(this.IsDefeatMechanicActive()) dead=\(this.IsDead()) defeated=\(ScriptedPuppet.IsDefeated(this)) aboutDie=\(this.IsAboutToDie()) aboutDef=\(this.IsAboutToBeDefeated()) crowd=\(this.IsCrowd()) dismemberment=\(IsDefined(component)) fleshLimbs=\(limbs.fleshDismemberments) cyberLimbs=\(limbs.cyberDismemberments) onHits=\(this.npaOnHitCount) hits=\(this.npaHitCount) hitInfo=[\(this.npaLastHit)] goreChecks=\(this.npaGoreCount) goreInfo=[\(this.npaLastGore)] deaths=\(this.npaDeathCount) deathInfo=[\(this.npaLastDeath)]";
 }
 
 // The player's friendly-target flag drives weapon-safe and attack checks.
@@ -484,7 +503,7 @@ public class NPARetaliationEvent extends Event {
 @addMethod(NPCPuppet)
 protected cb func OnNPARetaliationEvent(evt: ref<NPARetaliationEvent>) -> Bool {
   let player = evt.player;
-  if !IsDefined(player) || !NPAControl.Enabled(this.GetGame()) || !player.npaRetaliationEnabled || this.IsDead() { return false; }
+  if !IsDefined(player) || this.IsCharacterChildren() || !NPAControl.Enabled(this.GetGame()) || !player.npaRetaliationEnabled || this.IsDead() { return false; }
   let wasHostile = Equals(GameObject.GetAttitudeBetween(this, player), EAIAttitude.AIA_Hostile);
   if !wasHostile { GameObject.ChangeAttitudeToHostile(this, player); }
   // A hostile attitude alone does not register the player as an AI threat.
@@ -507,7 +526,7 @@ protected cb func OnNPARetaliationEvent(evt: ref<NPARetaliationEvent>) -> Bool {
 @wrapMethod(GameObject)
 protected cb func OnHit(evt: ref<gameHitEvent>) -> Bool {
   let npc = this as NPCPuppet;
-  if IsDefined(npc) && IsDefined(evt) && IsDefined(evt.attackData) && IsDefined(evt.attackData.GetInstigator()) && evt.attackData.GetInstigator().IsPlayer() {
+  if IsDefined(npc) && !npc.IsCharacterChildren() && IsDefined(evt) && IsDefined(evt.attackData) && IsDefined(evt.attackData.GetInstigator()) && evt.attackData.GetInstigator().IsPlayer() {
     npc.NoPlotArmor_RecordOnHit();
     let player = evt.attackData.GetInstigator() as PlayerPuppet;
     if IsDefined(player) && NPAControl.Enabled(player.GetGame()) && player.npaRetaliationEnabled && !npc.IsDead() {

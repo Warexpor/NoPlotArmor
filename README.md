@@ -6,7 +6,7 @@ TLDR: story NPCs can be damaged, killed, and dismembered. Spawns are copies for 
 
 ## What it does
 
-* Removes protected / immortal / invulnerable states from NPCs while attached, restores them on toggle-off.
+* Removes protected / immortal / invulnerable states from adult NPCs while attached, restores them on toggle-off. Children stay protected by design (engine ghosts their hits; the mod never overrides that).
 * Flags player attacks with FriendlyFire + immortality-ignore so friendly NPCs actually take hits.
 * Injects wound data for 48 story appearances so dismemberment can show (requires donor archive, see below).
 * Story-character spawner (221 records, curated featured list + search). Copies are tagged `NoPlotArmor_Spawn`.
@@ -64,6 +64,7 @@ Legacy (from older names, remove if present):
 * Killing quest NPCs can permanently block quests. This is the point of the mod — use a disposable save.
 * Friendly-fire collision uses a temporary neutral-attitude workaround while aiming. Fast target switching or delayed projectiles can miss.
 * Nonlethal / fist-fight hits keep vanilla rules and will not kill.
+* Children stay immortal by design and are skipped by every kill path (protection, hit flags, attitude override, death override).
 * Save/load across sessions works for toggles, but long-term quest side effects are untested.
 
 ## Pairs well with
