@@ -5,8 +5,8 @@ Use a disposable manual save in free roam. Do NOT use your main save: killing qu
 ## Setup
 
 1. Load the disposable save.
-2. Open the CET overlay. The `No Plot Armor v0.2.0` window lists the catalog.
-3. Start with a catalog NPC that previously failed. If you need a comparison, try Fingers, Wilson, Reed, or **Lizzy Wizzy (PL)**. Test one copy at a time so the log is easy to follow.
+2. Open the CET overlay. The `No Plot Armor v0.2.1` window lists the catalog.
+3. Start with a catalog NPC that previously failed: **Wakako Okada**, or one of the new Arasaka spawns (**Hanako**, **Yorinobu**, **Saburo**, **Michiko**). If you need a comparison, try Fingers, Wilson, Reed, or **Lizzy Wizzy (PL)**. Test one copy at a time so the log is easy to follow.
 4. Press **Inspect NPC in crosshairs** before shooting. Check the appearance and the initial `fleshLimbs` and `cyberLimbs` counts.
 5. For full log output, enable **Verbose logging** first. Leave it off for normal play.
 

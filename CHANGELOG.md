@@ -2,6 +2,12 @@
 
 All notable changes use SemVer.
 
+## [0.2.1] — dev, unreleased (local testing only)
+
+Fixed:
+* Wakako gore: `wakako_okada.app` (and other story apps without body-type suffixes — `celebrity_chrome`, `us_cracks_band`, `weldon_holt`, `thompson`, `josh*`, `psycho`, `sebastian_perez`) no longer fall through the universal wound fallback. `PickDonor` name lists extended; all four `Character` records verified present in `tweakdb.bin`/`tweakdb_ep1.bin` via TDBID hash check.
+* Spawner: Arasaka family added (all records verified in TweakDB) — Hanako (`Character.Hanako`), Yorinobu (`Character.Yorinobu`), Saburo (`Character.Saburo`), Michiko (`Character.Michiko`, AMM category `Arasaka`). Featured list + catalog entries + explicit donor registrations.
+
 ## [0.2.0] — 2026-11-17
 First versioned release. Stable in-game, spawner kept, unified outfit support included.
 

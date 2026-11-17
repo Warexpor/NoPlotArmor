@@ -1,4 +1,4 @@
-# No Plot Armor — Vortex zip builder / validator (0.2.0, local only, no publish)
+# No Plot Armor — Vortex zip builder / validator (0.2.1, local only, no publish)
 # Run from repo root: powershell -ExecutionPolicy Bypass -File tools/build-zip.ps1
 $ErrorActionPreference = "Stop"
 $Version = (Get-Content "$PSScriptRoot/../VERSION" -Raw).Trim()

@@ -1,7 +1,7 @@
 module NoPlotArmor
 
-// No Plot Armor v0.2.0 — killable story NPCs, unified wound injection, story spawner kept.
-public static func NPA_Version() -> String { return "0.2.0"; }
+// No Plot Armor v0.2.1 — killable story NPCs, unified wound injection, story spawner kept.
+public static func NPA_Version() -> String { return "0.2.1"; }
 
 
 // Track loaded NPCs so the master switch can remove our own protection changes.
@@ -631,11 +631,14 @@ protected final func DismembermentConditions() -> Bool {
 // Resource/Load and assigned into whichever .app loads for the target path
 // (vanilla or a body-mod override). Nothing is constructed; a target file that
 // already has wounds is left alone, so other dismemberment mods win.
-// Two tiers: explicit story donors (exact, body-type-matched Tyger wounds) plus
-// a universal fallback for any other woundless appearance (custom outfits).
-// The universal fallback skips main_npc paths and picks ma/wa by filename,
-// so story NPCs always use their exact donor. Until the vanilla-only
-// universal_ma/universal_wa archive ships, the fallback stays dormant.
+// Two tiers: explicit story donors (exact, body-type-matched wounds when their
+// archive is present) plus a universal fallback for any other woundless
+// appearance (custom outfits, story NPCs whose donor archive is absent).
+// The universal fallback self-seeds from vanilla gang bodies at startup and
+// picks ma/wa by story-name keywords, then filename suffixes; story NPCs
+// with a shipped exact donor still use it. Until the vanilla-only
+// donor archive ships, explicit donors for missing archives stay dormant
+// and the universal fallback does the work.
 public class NPAWoundDonor extends IScriptable {
   private let token: ref<ResourceToken>;
   private let captured: Bool;
@@ -764,14 +767,19 @@ public class NPAUniversalWounds extends IScriptable {
       || StrContains(path, "meredith") || StrContains(path, "elizabeth_peralez") || StrContains(path, "alt")
       || StrContains(path, "dakota") || StrContains(path, "t_bug") || StrContains(path, "sandra")
       || StrContains(path, "bella") || StrContains(path, "songbird") || StrContains(path, "lizzy")
-      || StrContains(path, "myers") || StrContains(path, "alex") { return 2; }
+      || StrContains(path, "celebrity_chrome") || StrContains(path, "us_cracks")
+      || StrContains(path, "myers") || StrContains(path, "alex")
+      || StrContains(path, "wakako") || StrContains(path, "hanako") || StrContains(path, "michiko") { return 2; }
     if StrContains(path, "jackie") || StrContains(path, "takemura") || StrContains(path, "river")
       || StrContains(path, "kerry") || StrContains(path, "victor") || StrContains(path, "dex")
       || StrContains(path, "saul") || StrContains(path, "jefferson") || StrContains(path, "8ug8ear")
       || StrContains(path, "reyes") || StrContains(path, "dino") || StrContains(path, "fingers")
       || StrContains(path, "santiago") || StrContains(path, "kurt") || StrContains(path, "reed")
       || StrContains(path, "mr_hands") || StrContains(path, "theo") || StrContains(path, "wilson")
-      || StrContains(path, "weyland") || StrContains(path, "sampson") || StrContains(path, "steve") { return 1; }
+      || StrContains(path, "weyland") || StrContains(path, "sampson") || StrContains(path, "steve")
+      || StrContains(path, "yorinobu") || StrContains(path, "saburo")
+      || StrContains(path, "thompson") || StrContains(path, "weldon")
+      || StrContains(path, "josh") || StrContains(path, "psycho") || StrContains(path, "sebastian") { return 1; }
     if StrContains(path, "_wa") || StrContains(path, "_wb") || StrContains(path, "_waf") { return 2; }
     if StrContains(path, "woman") || StrContains(path, "_fa") { return 2; }
     if StrContains(path, "_ma") || StrContains(path, "_mb") || StrContains(path, "_mm") { return 1; }
@@ -878,6 +886,10 @@ public class NPAWoundInjector extends ScriptableService {
     this.Add(r"ep1\\characters\\appearances\\main_npc\\reed.app", r"noplotarmor\\wound_donors\\reed.app", "reed");
     this.Add(r"ep1\\characters\\appearances\\main_npc\\songbird.app", r"noplotarmor\\wound_donors\\songbird.app", "songbird");
     this.Add(r"ep1\\characters\\appearances\\main_npc\\theo.app", r"noplotarmor\\wound_donors\\theo.app", "theo");
+    this.Add(r"base\\characters\\appearances\\main_npc\\hanako.app", r"noplotarmor\\wound_donors\\hanako.app", "hanako");
+    this.Add(r"base\\characters\\appearances\\main_npc\\yorinobu_arasaka.app", r"noplotarmor\\wound_donors\\yorinobu_arasaka.app", "yorinobu_arasaka");
+    this.Add(r"base\\characters\\appearances\\main_npc\\saburo_arasaka.app", r"noplotarmor\\wound_donors\\saburo_arasaka.app", "saburo_arasaka");
+    this.Add(r"base\\characters\\appearances\\main_npc\\michiko.app", r"noplotarmor\\wound_donors\\michiko.app", "michiko");
     // Registered last so explicit story donors fire before the universal fallback.
     this.universal = NPAUniversalWounds.Create();
   }
