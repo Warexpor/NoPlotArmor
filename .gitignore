@@ -1,3 +1,9 @@
 # CET generated files — never commit
 db.sqlite3
 *.log
+# Local build output + user settings — never commit
+dist/
+*.zip
+enabled.txt
+retaliation.txt
+verbose.txt

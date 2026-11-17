@@ -1,42 +1,78 @@
-# NPC Omega Gore — experimental test build
+# No Plot Armor — Killable Story NPCs and Dismemberment
 
-This build attempts to allow damage and death of protected NPCs and provides a story-character spawner. It is not a finished universal gore solution. Use a separate manual save for testing: killing quest NPCs can permanently block quest progress.
+v0.2.0 — first versioned release. Spawner kept in.
 
-Rebranded from OmegaNPC to NPCOmegaGore. Legacy `OmegaNPC_Spawn` tags are still cleaned up by **Remove spawned copies**, but new spawns use `NPCOmegaGore_Spawn`. CET log prefix is now `[NPCOmegaGore]`.
+TLDR: story NPCs can be damaged, killed, and dismembered. Spawns are copies for safe testing. Killing quest NPCs can break quests — use a manual save.
 
-## Using the spawner
+## What it does
 
-1. Install the archive using Vortex, or copy the `r6` and `bin` folders into your Cyberpunk 2077 directory. Cyber Engine Tweaks and redscript are required.
-2. Launch the game, load a test save, and open the CET overlay with its configured key. The `NPCOmegaGore` window contains a searchable catalog and a record field. Select a catalog entry, then press **Spawn record**.
-3. Spawned entities are copies; they are not the quest-owned originals. Some records require Phantom Liberty, quest setup, or unavailable assets. A reported spawn can still look or behave incorrectly.
-4. **Remove spawned copies** targets entities tagged by this mod (plus legacy OmegaNPC tags). Put an NPC in the crosshairs and press **Inspect NPC in crosshairs** to print its health, protection and dismemberment-component information in the window and CET log.
+* Removes protected / immortal / invulnerable states from NPCs while attached, restores them on toggle-off.
+* Flags player attacks with FriendlyFire + immortality-ignore so friendly NPCs actually take hits.
+* Injects wound data for 48 story appearances so dismemberment can show (requires donor archive, see below).
+* Story-character spawner (221 records, curated featured list + search). Copies are tagged `NoPlotArmor_Spawn`.
+* Optional retaliation: NPCs fight back when hit (off by default).
+* Inspect tool: health, protection, flesh/cyber limb counts, hit/gore counters.
 
-The catalog lists 221 candidate records, based on the public Appearance Menu Mod catalog: https://github.com/MaximiliumM/appearancemenumod . Records and labels are candidates, not verified spawn or gore coverage. You can enter another `Character.*` record manually.
+## Requirements
 
-## What it changes
+* Cyberpunk 2077 2.x, Cyber Engine Tweaks, redscript
+* Optional but recommended: Relentless Live Dismember for living-limb loss
 
-A named Mortal override is applied while NPCs are attached, and removed on uninitialization. Player attacks are flagged at creation (`AttackData.PreAttack`) with friendly fire, immortality-mode ignore and stat-pool-limit ignore, and re-flagged in the damage pipeline as a safety net. The hit-reaction CanDieCondition is bypassed for NPCs. Quest-owned god-mode sources are left intact. These mechanisms have not been verified in gameplay, across save/load or every scene, and may not overcome every protection or collision setup. They can alter fights and quest behavior. The mod does not replace models or character appearance files; for Judy it injects wound data at load time from a bundled donor file (donor pattern), so body-mod overrides keep working.
+## Install
 
-Diagnostics: `NPCOmegaGore_Describe()` reports `onHits` (collision hits reaching `GameObject.OnHit`), `hits` (hits reaching `DamageSystem.PreProcess`) and `goreChecks` (dismemberment-condition evaluations). `onHits>0` with `hits==0` means collision works but the pipeline rejects the hit; both zero during live fire means shots are still rejected before collision.
+Vortex (recommended):
+1. Download the 0.2.0 zip.
+2. Install in Vortex — it should map `r6/`, `bin/` to the game folder.
+3. Deploy, launch, load a test save, open CET overlay.
 
-The installed Relentless Live Dismember mod excludes civilians, companions and crowd from its special *living limb-loss* branch; this mod does not remove those exclusions.
+Manual:
+Copy `r6/` and `bin/` into your Cyberpunk 2077 folder.
 
-## Initial test
+Verify install:
+* `r6/scripts/NoPlotArmor/NoPlotArmor.reds` exists
+* `bin/x64/plugins/cyber_engine_tweaks/mods/NoPlotArmor/init.lua` exists
+* CET window shows `No Plot Armor v0.2.0`
 
-Use a disposable manual save in a free-roam area. Check a generic enemy, a civilian, a spawned Judy or Panam, and an actual protected quest NPC. For each, observe whether shots connect, health drops, death occurs, and gore appears. Use **Inspect NPC in crosshairs** before attacking if possible. Try a reload and a different weapon if behavior differs. Report which NPC, whether it was spawned or quest-owned, and the result; CET's log contains lines prefixed `[NPCOmegaGore]`.
+Donor archive note (0.2.0):
+The local `noplotarmor_donors.archive` is built from local game + body-mod appearances and is NOT included in this zip pending a vanilla-only rebuild for Nexus redistribution. Without it, killability + spawner work, but story-appearance wounds fall back to whatever the game / other mods provide. See CHANGELOG.
+
+## Use
+
+1. CET overlay → `No Plot Armor v0.2.0`.
+2. Pick a record, `Spawn record`. Copies spawn 2m in front of V.
+3. `Inspect NPC in crosshairs` before/after shooting.
+4. `Remove spawned copies` cleans all tags: `NoPlotArmor_Spawn`, `NPCOmegaGore_Spawn`, `OmegaNPC_Spawn`.
+5. `NPCs retaliate when hit` — off by default, saved to `retaliation.txt`.
+6. `Enable No Plot Armor` master switch — saved to `enabled.txt`. Off restores protection overrides and fire blocks.
+7. `Verbose logging` — off by default, saved to `verbose.txt`. Turn on only for bug reports.
 
 ## Removal
 
-If installed with Vortex, disable the mod there. If installed manually, close the game and remove only these mod-specific paths, then load a save from before the test:
+Vortex: disable/uninstall.
+Manual: delete:
+* `r6/scripts/NoPlotArmor/`
+* `bin/x64/plugins/cyber_engine_tweaks/mods/NoPlotArmor/`
+* `archive/pc/mod/noplotarmor_donors.archive` (if installed)
 
-* `r6/scripts/NPCOmegaGore/`
-* `bin/x64/plugins/cyber_engine_tweaks/mods/NPCOmegaGore/`
+Legacy (from older names, remove if present):
+* `r6/scripts/NPCOmegaGore/`, `r6/scripts/OmegaNPC/`
+* `bin/x64/plugins/cyber_engine_tweaks/mods/NPCOmegaGore/`, `.../OmegaNPC/`
+* `archive/pc/mod/npcomegagore_donors.archive`
 
-Legacy paths from the previous name, if present, should also be removed to avoid double-wrapping:
+## Known issues
 
-* `r6/scripts/OmegaNPC/`
-* `bin/x64/plugins/cyber_engine_tweaks/mods/OmegaNPC/`
+* Killing quest NPCs can permanently block quests. This is the point of the mod — use a disposable save.
+* Friendly-fire collision uses a temporary neutral-attitude workaround while aiming. Fast target switching or delayed projectiles can miss.
+* Nonlethal / fist-fight hits keep vanilla rules and will not kill.
+* Save/load across sessions works for toggles, but long-term quest side effects are untested.
 
-## Validation
+## Credits
 
-The REDscript source compiled with the installed game compiler against a copied base cache, the installed scripts, and installed RED4ext plugin scripts. A Lua mock checked spawn creation, positioning, update and cleanup. Gameplay hit registration still needs real-world verification: compilation success does not prove ordinary gunfire connects or that gore runs.
+* Character list derived from Appearance Menu Mod public catalog.
+* Wound injection technique adapted from Collateral Damage's WoundInject pattern.
+* Pairs well with Relentless Live Dismember (separate mod).
+
+## Versioning
+
+See `CHANGELOG.md`. This is v0.2.0.
+License: MIT for scripts in this repo. Game assets belong to CD PROJEKT RED.
