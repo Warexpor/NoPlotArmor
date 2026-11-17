@@ -685,10 +685,14 @@ public class NPAWoundDonor extends IScriptable {
 }
 
 // Unified fallback: any woundless appearance (custom outfits included) gets
-// body-type-matched wounds from two tiny vanilla donors. Story main_npc paths
-// stay on the explicit list above so exact donors win; this skips them.
+// body-type-matched wounds. Self-seeding: the first vanilla appearance WITH
+// wounds per body type becomes the donor (crowd always loads), so this works
+// with no archive installed. If the vanilla universal archive ships later,
+// its donors take precedence (learned slots only fill when empty).
+// Explicit story donors stay registered so exact donors win when their
+// archive is present; they are dormant otherwise.
 // Hot path: Resource/Load fires hundreds of times per second while streaming,
-// so this does no logging per appearance and returns fast when wounds exist.
+// so this logs once per learned donor and never per injection.
 public class NPAUniversalWounds extends IScriptable {
   private let maToken: ref<ResourceToken>;
   private let waToken: ref<ResourceToken>;
@@ -741,8 +745,22 @@ public class NPAUniversalWounds extends IScriptable {
   }
 
   // Returns 1 for masculine, 2 for feminine, 0 for unknown/skip.
+  // Known story names first (covers custom outfits whose path keeps the name,
+  // e.g. hyst judy/panam variants), then filename body-type suffixes.
   private func PickDonor(path: String) -> Int32 {
-    if StrContains(path, "main_npc") { return 0; }
+    if StrContains(path, "judy") || StrContains(path, "panam") || StrContains(path, "rogue")
+      || StrContains(path, "evelyn") || StrContains(path, "misty") || StrContains(path, "clair")
+      || StrContains(path, "meredith") || StrContains(path, "elizabeth_peralez") || StrContains(path, "alt")
+      || StrContains(path, "dakota") || StrContains(path, "t_bug") || StrContains(path, "sandra")
+      || StrContains(path, "bella") || StrContains(path, "songbird") || StrContains(path, "lizzy")
+      || StrContains(path, "myers") || StrContains(path, "alex") { return 2; }
+    if StrContains(path, "jackie") || StrContains(path, "takemura") || StrContains(path, "river")
+      || StrContains(path, "kerry") || StrContains(path, "victor") || StrContains(path, "dex")
+      || StrContains(path, "saul") || StrContains(path, "jefferson") || StrContains(path, "8ug8ear")
+      || StrContains(path, "reyes") || StrContains(path, "dino") || StrContains(path, "fingers")
+      || StrContains(path, "santiago") || StrContains(path, "kurt") || StrContains(path, "reed")
+      || StrContains(path, "mr_hands") || StrContains(path, "theo") || StrContains(path, "wilson")
+      || StrContains(path, "weyland") || StrContains(path, "sampson") || StrContains(path, "steve") { return 1; }
     if StrContains(path, "_wa") || StrContains(path, "_wb") || StrContains(path, "_waf") { return 2; }
     if StrContains(path, "woman") || StrContains(path, "_fa") { return 2; }
     if StrContains(path, "_ma") || StrContains(path, "_mb") || StrContains(path, "_mm") { return 1; }
@@ -752,8 +770,32 @@ public class NPAUniversalWounds extends IScriptable {
 
   private cb func OnAnyApp(event: ref<ResourceEvent>) {
     let app = event.GetResource() as appearanceAppearanceResource;
-    if !IsDefined(app) || ArraySize(app.Wounds) > 0 { return; }
-    let pick = this.PickDonor(ResRef.ToString(event.GetPath()));
+    if !IsDefined(app) { return; }
+    let pathStr = ResRef.ToString(event.GetPath());
+    let pick = this.PickDonor(pathStr);
+    if pick == 0 { return; }
+    if ArraySize(app.Wounds) > 0 {
+      // Learn: first wounded appearance per body type becomes the donor.
+      // Archive donors (OnMaDonor/OnWaDonor) take precedence: only fill empty slots.
+      if pick == 2 && !this.waReady {
+        this.waWounds = app.Wounds;
+        this.waEffects = app.DismEffects;
+        this.waConfig = app.DismWoundConfig;
+        this.waReady = true;
+        FTLog(s"[NoPlotArmor] universal learned wa donor");
+        this.Announce();
+      } else {
+        if pick == 1 && !this.maReady {
+          this.maWounds = app.Wounds;
+          this.maEffects = app.DismEffects;
+          this.maConfig = app.DismWoundConfig;
+          this.maReady = true;
+          FTLog(s"[NoPlotArmor] universal learned ma donor");
+          this.Announce();
+        }
+      }
+      return;
+    }
     if pick == 2 && this.waReady {
       app.Wounds = this.waWounds;
       app.DismEffects = this.waEffects;
@@ -777,7 +819,6 @@ public class NPAWoundInjector extends ScriptableService {
   }
 
   private cb func OnLoad() {
-    this.universal = NPAUniversalWounds.Create();
     this.Add(r"base\\characters\\appearances\\main_npc\\judy.app", r"noplotarmor\\wound_donors\\judy.app", "judy");
     this.Add(r"base\\characters\\appearances\\main_npc\\celebrity_chrome.app", r"noplotarmor\\wound_donors\\celebrity_chrome.app", "celebrity_chrome");
     this.Add(r"base\\characters\\appearances\\main_npc\\panam.app", r"noplotarmor\\wound_donors\\panam.app", "panam");
@@ -826,5 +867,7 @@ public class NPAWoundInjector extends ScriptableService {
     this.Add(r"ep1\\characters\\appearances\\main_npc\\reed.app", r"noplotarmor\\wound_donors\\reed.app", "reed");
     this.Add(r"ep1\\characters\\appearances\\main_npc\\songbird.app", r"noplotarmor\\wound_donors\\songbird.app", "songbird");
     this.Add(r"ep1\\characters\\appearances\\main_npc\\theo.app", r"noplotarmor\\wound_donors\\theo.app", "theo");
+    // Registered last so explicit story donors fire before the universal fallback.
+    this.universal = NPAUniversalWounds.Create();
   }
 }
