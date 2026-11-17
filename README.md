@@ -34,7 +34,7 @@ Verify install:
 * CET window shows `No Plot Armor v0.2.0`
 
 Donor archive note (0.2.0):
-The local `noplotarmor_donors.archive` is built from local game + body-mod appearances and is NOT included in this zip pending a vanilla-only rebuild for Nexus redistribution. Without it, killability + spawner work, but story-appearance wounds fall back to whatever the game / other mods provide. See CHANGELOG.
+No archive is required. The mod self-seeds wound data from two vanilla gang bodies forced to load at startup, and injects body-type-matched wounds into any woundless NPC appearance (custom outfits included, validated in game on a custom Judy outfit). A tiny optional vanilla universal archive may ship later as a fallback; the 48-file local donor set is deprecated and not redistributed.
 
 ## Use
 
