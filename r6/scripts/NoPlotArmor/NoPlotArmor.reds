@@ -1,7 +1,7 @@
 module NoPlotArmor
 
-// No Plot Armor v0.2.0 — killable story NPCs, wound injection, story spawner kept.
-public static func NPA_Version() -> String { return "0.2.0"; }
+// No Plot Armor v0.3.0-dev — killable story NPCs, unified wound injection, story spawner kept.
+public static func NPA_Version() -> String { return "0.3.0-dev"; }
 
 
 // Track loaded NPCs so the master switch can remove our own protection changes.
@@ -631,8 +631,11 @@ protected final func DismembermentConditions() -> Bool {
 // Resource/Load and assigned into whichever .app loads for the target path
 // (vanilla or a body-mod override). Nothing is constructed; a target file that
 // already has wounds is left alone, so other dismemberment mods win.
-// Local donors use the game's Tyger Claw wound resources for the matching
-// body type and map the wound config to the names in each target appearance.
+// Two tiers: explicit story donors (exact, body-type-matched Tyger wounds) plus
+// a universal fallback for any other woundless appearance (custom outfits).
+// The universal fallback skips main_npc paths and picks ma/wa by filename,
+// so story NPCs always use their exact donor. Until the vanilla-only
+// universal_ma/universal_wa archive ships, the fallback stays dormant.
 public class NPAWoundDonor extends IScriptable {
   private let token: ref<ResourceToken>;
   private let captured: Bool;
@@ -681,14 +684,100 @@ public class NPAWoundDonor extends IScriptable {
   }
 }
 
+// Unified fallback: any woundless appearance (custom outfits included) gets
+// body-type-matched wounds from two tiny vanilla donors. Story main_npc paths
+// stay on the explicit list above so exact donors win; this skips them.
+// Hot path: Resource/Load fires hundreds of times per second while streaming,
+// so this does no logging per appearance and returns fast when wounds exist.
+public class NPAUniversalWounds extends IScriptable {
+  private let maToken: ref<ResourceToken>;
+  private let waToken: ref<ResourceToken>;
+  private let maWounds: array<ref<entdismembermentWoundResource>>;
+  private let maEffects: array<ref<entdismembermentEffectResource>>;
+  private let maConfig: entdismembermentWoundsConfigSet;
+  private let waWounds: array<ref<entdismembermentWoundResource>>;
+  private let waEffects: array<ref<entdismembermentEffectResource>>;
+  private let waConfig: entdismembermentWoundsConfigSet;
+  private let maReady: Bool;
+  private let waReady: Bool;
+  private let announced: Bool;
+
+  public static func Create() -> ref<NPAUniversalWounds> {
+    let self = new NPAUniversalWounds();
+    let callbacks = GameInstance.GetCallbackSystem();
+    callbacks.RegisterCallback(n"Resource/Load", self, n"OnMaDonor").AddTarget(ResourceTarget.Path(r"noplotarmor\\wound_donors\\universal_ma.app"));
+    callbacks.RegisterCallback(n"Resource/Load", self, n"OnWaDonor").AddTarget(ResourceTarget.Path(r"noplotarmor\\wound_donors\\universal_wa.app"));
+    callbacks.RegisterCallback(n"Resource/Load", self, n"OnAnyApp").AddTarget(ResourceTarget.Type(n"appearanceAppearanceResource"));
+    self.maToken = GameInstance.GetResourceDepot().LoadResource(r"noplotarmor\\wound_donors\\universal_ma.app");
+    self.waToken = GameInstance.GetResourceDepot().LoadResource(r"noplotarmor\\wound_donors\\universal_wa.app");
+    return self;
+  }
+
+  private cb func OnMaDonor(event: ref<ResourceEvent>) {
+    let donor = event.GetResource() as appearanceAppearanceResource;
+    if !IsDefined(donor) || ArraySize(donor.Wounds) == 0 { return; }
+    this.maWounds = donor.Wounds;
+    this.maEffects = donor.DismEffects;
+    this.maConfig = donor.DismWoundConfig;
+    this.maReady = true;
+    this.Announce();
+  }
+
+  private cb func OnWaDonor(event: ref<ResourceEvent>) {
+    let donor = event.GetResource() as appearanceAppearanceResource;
+    if !IsDefined(donor) || ArraySize(donor.Wounds) == 0 { return; }
+    this.waWounds = donor.Wounds;
+    this.waEffects = donor.DismEffects;
+    this.waConfig = donor.DismWoundConfig;
+    this.waReady = true;
+    this.Announce();
+  }
+
+  private func Announce() -> Void {
+    if !this.announced && this.maReady && this.waReady {
+      this.announced = true;
+      FTLog(s"[NoPlotArmor] universal wound donors ready (ma + wa)");
+    }
+  }
+
+  // Returns 1 for masculine, 2 for feminine, 0 for unknown/skip.
+  private func PickDonor(path: String) -> Int32 {
+    if StrContains(path, "main_npc") { return 0; }
+    if StrContains(path, "_wa") || StrContains(path, "_wb") || StrContains(path, "_waf") { return 2; }
+    if StrContains(path, "woman") || StrContains(path, "_fa") { return 2; }
+    if StrContains(path, "_ma") || StrContains(path, "_mb") || StrContains(path, "_mm") { return 1; }
+    if StrContains(path, "man_") || StrContains(path, "_mc") { return 1; }
+    return 0;
+  }
+
+  private cb func OnAnyApp(event: ref<ResourceEvent>) {
+    let app = event.GetResource() as appearanceAppearanceResource;
+    if !IsDefined(app) || ArraySize(app.Wounds) > 0 { return; }
+    let pick = this.PickDonor(ResRef.ToString(event.GetPath()));
+    if pick == 2 && this.waReady {
+      app.Wounds = this.waWounds;
+      app.DismEffects = this.waEffects;
+      app.DismWoundConfig = this.waConfig;
+    } else {
+      if pick == 1 && this.maReady {
+        app.Wounds = this.maWounds;
+        app.DismEffects = this.maEffects;
+        app.DismWoundConfig = this.maConfig;
+      }
+    }
+  }
+}
+
 public class NPAWoundInjector extends ScriptableService {
   private let donors: array<ref<NPAWoundDonor>>;
+  private let universal: ref<NPAUniversalWounds>;
 
   private func Add(target: ResRef, donor: ResRef, name: String) {
     ArrayPush(this.donors, NPAWoundDonor.Create(target, donor, name));
   }
 
   private cb func OnLoad() {
+    this.universal = NPAUniversalWounds.Create();
     this.Add(r"base\\characters\\appearances\\main_npc\\judy.app", r"noplotarmor\\wound_donors\\judy.app", "judy");
     this.Add(r"base\\characters\\appearances\\main_npc\\celebrity_chrome.app", r"noplotarmor\\wound_donors\\celebrity_chrome.app", "celebrity_chrome");
     this.Add(r"base\\characters\\appearances\\main_npc\\panam.app", r"noplotarmor\\wound_donors\\panam.app", "panam");

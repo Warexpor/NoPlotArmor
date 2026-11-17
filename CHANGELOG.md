@@ -1,6 +1,16 @@
 # Changelog
 
-All notable changes use SemVer. This repo starts versioning at 0.2.0.
+All notable changes use SemVer.
+
+## [Unreleased] — unified custom outfit support (0.3.0-dev)
+Added:
+* Universal wound fallback: any woundless appearance outside `main_npc` (custom outfits included) gets vanilla Tyger ma/wa wounds automatically. Story NPCs stay on explicit donors.
+* Two tiny vanilla donors (`universal_ma.app`, `universal_wa.app`) replace the need for 48 cloned files. Archive pending vanilla-only rebuild.
+* Silent hot path: no per-appearance logging (streaming fires hundreds/sec). One log line when both donors are ready.
+
+Changed:
+* `NPA_Version()` / CET window now `0.3.0-dev`.
+* Wound injector holds both explicit donors (backward compat with existing local archive) and the universal fallback.
 
 ## [0.2.0] — 2026-11-17
 First versioned release. Stable in-game, spawner kept.
