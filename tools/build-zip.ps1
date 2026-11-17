@@ -13,6 +13,7 @@ Write-Host "=== No Plot Armor $Version ==="
 # 1. Required source checks
 $required = @(
   "r6/scripts/NoPlotArmor/NoPlotArmor.reds",
+  "r6/scripts/NoPlotArmor/NoPlotArmorCries.reds",
   "bin/x64/plugins/cyber_engine_tweaks/mods/NoPlotArmor/init.lua",
   "bin/x64/plugins/cyber_engine_tweaks/mods/NoPlotArmor/catalog.lua",
   "README.md", "CHANGELOG.md", "LICENSE", "VERSION"
@@ -50,6 +51,7 @@ if (Test-Path $Stage) { Remove-Item $Stage -Recurse -Force }
 New-Item -ItemType Directory -Force -Path "$Stage/r6/scripts/NoPlotArmor" | Out-Null
 New-Item -ItemType Directory -Force -Path "$Stage/bin/x64/plugins/cyber_engine_tweaks/mods/NoPlotArmor" | Out-Null
 Copy-Item "$Root/r6/scripts/NoPlotArmor/NoPlotArmor.reds" "$Stage/r6/scripts/NoPlotArmor/"
+Copy-Item "$Root/r6/scripts/NoPlotArmor/NoPlotArmorCries.reds" "$Stage/r6/scripts/NoPlotArmor/"
 Copy-Item "$Root/bin/x64/plugins/cyber_engine_tweaks/mods/NoPlotArmor/init.lua" "$Stage/bin/x64/plugins/cyber_engine_tweaks/mods/NoPlotArmor/"
 Copy-Item "$Root/bin/x64/plugins/cyber_engine_tweaks/mods/NoPlotArmor/catalog.lua" "$Stage/bin/x64/plugins/cyber_engine_tweaks/mods/NoPlotArmor/"
 Copy-Item "$Root/README.md", "$Root/CHANGELOG.md", "$Root/LICENSE", "$Root/VERSION" $Stage
@@ -76,6 +78,7 @@ Write-Host "--- zip contents ---"
 $entries | Sort-Object | ForEach-Object { Write-Host "  $_" }
 $need = @(
   "r6/scripts/NoPlotArmor/NoPlotArmor.reds",
+  "r6/scripts/NoPlotArmor/NoPlotArmorCries.reds",
   "bin/x64/plugins/cyber_engine_tweaks/mods/NoPlotArmor/init.lua",
   "bin/x64/plugins/cyber_engine_tweaks/mods/NoPlotArmor/catalog.lua"
 )

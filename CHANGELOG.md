@@ -7,6 +7,7 @@ All notable changes use SemVer.
 Fixed:
 * Wakako gore: `wakako_okada.app` (and other story apps without body-type suffixes — `celebrity_chrome`, `us_cracks_band`, `weldon_holt`, `thompson`, `josh*`, `psycho`, `sebastian_perez`) no longer fall through the universal wound fallback. `PickDonor` name lists extended; all four `Character` records verified present in `tweakdb.bin`/`tweakdb_ep1.bin` via TDBID hash check.
 * Spawner: Arasaka family added (all records verified in TweakDB) — Hanako (`Character.Hanako`), Yorinobu (`Character.Yorinobu`), Saburo (`Character.Saburo`), Michiko (`Character.Michiko`, AMM category `Arasaka`). Featured list + catalog entries + explicit donor registrations.
+* Cries + finisher voice ported in from DownedCries 0.1.0-dev (that standalone is superseded — disable its Vortex entry): downed/wounded/dismembered NPCs replay `hit_reaction_heavy` in their own voiceset on a 6–11 s cooldown, first cry on the downing transition, ragdolling puppets skipped; finisher kills cry once in the victim's own voice. All gated on the NPA master switch.
 
 ## [0.2.0] — 2026-11-17
 First versioned release. Stable in-game, spawner kept, unified outfit support included.
