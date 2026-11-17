@@ -1,7 +1,7 @@
 module NoPlotArmor
 
-// No Plot Armor v0.3.0-dev — killable story NPCs, unified wound injection, story spawner kept.
-public static func NPA_Version() -> String { return "0.3.0-dev"; }
+// No Plot Armor v0.2.0 — killable story NPCs, unified wound injection, story spawner kept.
+public static func NPA_Version() -> String { return "0.2.0"; }
 
 
 // Track loaded NPCs so the master switch can remove our own protection changes.

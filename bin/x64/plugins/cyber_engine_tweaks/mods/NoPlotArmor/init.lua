@@ -1,4 +1,4 @@
-local MOD_VERSION = "0.3.0-dev"
+local MOD_VERSION = "0.2.0"
 local MOD_NAME = "No Plot Armor"
 local LOG_PREFIX = "[NoPlotArmor] "
 local SPAWN_TAG = "NoPlotArmor_Spawn"
