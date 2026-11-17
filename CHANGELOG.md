@@ -11,7 +11,7 @@ Added:
 * `verbose.txt` + "Verbose logging" checkbox (off by default). TARGET sampler and fire-auth logs gated behind it.
 * Triple-tag migration: cleanup and spawn-gates accept `NoPlotArmor_Spawn`, `NPCOmegaGore_Spawn`, `OmegaNPC_Spawn`.
 * `VERSION`, `CHANGELOG.md`, Vortex zip validator (`tools/build-zip.ps1`).
-* Universal wound fallback: any woundless appearance (custom outfits included) gets body-type-matched wounds automatically. Self-seeding from vanilla loaded bodies — works with no archive installed. Story NPCs stay on explicit donors when their archive is present. Silent hot path, dormant until vanilla universal archive ships.
+* Universal wound fallback: any woundless appearance (custom outfits included) gets body-type-matched wounds automatically. Self-seeding from vanilla gang bodies forced to load at startup — works with no archive installed, no load-order gamble. Story NPCs stay on explicit donors when their archive is present. Silent hot path.
 First versioned release. Stable in-game, spawner kept.
 
 Added:

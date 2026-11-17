@@ -691,11 +691,15 @@ public class NPAWoundDonor extends IScriptable {
 // its donors take precedence (learned slots only fill when empty).
 // Explicit story donors stay registered so exact donors win when their
 // archive is present; they are dormant otherwise.
+// Seeds: two vanilla gang bodies forced to load at startup guarantee donors
+// are ready before spawner use; archive donors (if shipped) overwrite them.
 // Hot path: Resource/Load fires hundreds of times per second while streaming,
 // so this logs once per learned donor and never per injection.
 public class NPAUniversalWounds extends IScriptable {
   private let maToken: ref<ResourceToken>;
   private let waToken: ref<ResourceToken>;
+  private let maSeedToken: ref<ResourceToken>;
+  private let waSeedToken: ref<ResourceToken>;
   private let maWounds: array<ref<entdismembermentWoundResource>>;
   private let maEffects: array<ref<entdismembermentEffectResource>>;
   private let maConfig: entdismembermentWoundsConfigSet;
@@ -711,9 +715,16 @@ public class NPAUniversalWounds extends IScriptable {
     let callbacks = GameInstance.GetCallbackSystem();
     callbacks.RegisterCallback(n"Resource/Load", self, n"OnMaDonor").AddTarget(ResourceTarget.Path(r"noplotarmor\\wound_donors\\universal_ma.app"));
     callbacks.RegisterCallback(n"Resource/Load", self, n"OnWaDonor").AddTarget(ResourceTarget.Path(r"noplotarmor\\wound_donors\\universal_wa.app"));
+    // Vanilla seed bodies (dismemberable gang enemies, always have native
+    // wounds). Forced to load at startup so donors are ready before the
+    // spawner is ever used — no reliance on streaming order.
+    callbacks.RegisterCallback(n"Resource/Load", self, n"OnMaDonor").AddTarget(ResourceTarget.Path(r"base\\characters\\appearances\\gang\\gang__scavenger_ma.app"));
+    callbacks.RegisterCallback(n"Resource/Load", self, n"OnWaDonor").AddTarget(ResourceTarget.Path(r"base\\characters\\appearances\\gang\\gang__scavenger_wa.app"));
     callbacks.RegisterCallback(n"Resource/Load", self, n"OnAnyApp").AddTarget(ResourceTarget.Type(n"appearanceAppearanceResource"));
     self.maToken = GameInstance.GetResourceDepot().LoadResource(r"noplotarmor\\wound_donors\\universal_ma.app");
     self.waToken = GameInstance.GetResourceDepot().LoadResource(r"noplotarmor\\wound_donors\\universal_wa.app");
+    self.maSeedToken = GameInstance.GetResourceDepot().LoadResource(r"base\\characters\\appearances\\gang\\gang__scavenger_ma.app");
+    self.waSeedToken = GameInstance.GetResourceDepot().LoadResource(r"base\\characters\\appearances\\gang\\gang__scavenger_wa.app");
     return self;
   }
 
