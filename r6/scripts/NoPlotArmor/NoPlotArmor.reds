@@ -769,7 +769,8 @@ public class NPAUniversalWounds extends IScriptable {
       || StrContains(path, "bella") || StrContains(path, "songbird") || StrContains(path, "lizzy")
       || StrContains(path, "celebrity_chrome") || StrContains(path, "us_cracks")
       || StrContains(path, "myers") || StrContains(path, "alex")
-      || StrContains(path, "wakako") || StrContains(path, "hanako") || StrContains(path, "michiko") { return 2; }
+      || StrContains(path, "wakako") || StrContains(path, "hanako") || StrContains(path, "michiko")
+      || StrContains(path, "stout") { return 2; }
     if StrContains(path, "jackie") || StrContains(path, "takemura") || StrContains(path, "river")
       || StrContains(path, "kerry") || StrContains(path, "victor") || StrContains(path, "dex")
       || StrContains(path, "saul") || StrContains(path, "jefferson") || StrContains(path, "8ug8ear")
@@ -779,7 +780,9 @@ public class NPAUniversalWounds extends IScriptable {
       || StrContains(path, "weyland") || StrContains(path, "sampson") || StrContains(path, "steve")
       || StrContains(path, "yorinobu") || StrContains(path, "saburo")
       || StrContains(path, "thompson") || StrContains(path, "weldon")
-      || StrContains(path, "josh") || StrContains(path, "psycho") || StrContains(path, "sebastian") { return 1; }
+      || StrContains(path, "josh") || StrContains(path, "psycho") || StrContains(path, "sebastian")
+      || StrContains(path, "silverhand") || StrContains(path, "placide") || StrContains(path, "royce")
+      || StrContains(path, "dumdum") || StrContains(path, "brick") { return 1; }
     if StrContains(path, "_wa") || StrContains(path, "_wb") || StrContains(path, "_waf") { return 2; }
     if StrContains(path, "woman") || StrContains(path, "_fa") { return 2; }
     if StrContains(path, "_ma") || StrContains(path, "_mb") || StrContains(path, "_mm") { return 1; }
@@ -890,6 +893,11 @@ public class NPAWoundInjector extends ScriptableService {
     this.Add(r"base\\characters\\appearances\\main_npc\\yorinobu_arasaka.app", r"noplotarmor\\wound_donors\\yorinobu_arasaka.app", "yorinobu_arasaka");
     this.Add(r"base\\characters\\appearances\\main_npc\\saburo_arasaka.app", r"noplotarmor\\wound_donors\\saburo_arasaka.app", "saburo_arasaka");
     this.Add(r"base\\characters\\appearances\\main_npc\\michiko.app", r"noplotarmor\\wound_donors\\michiko.app", "michiko");
+    this.Add(r"base\\characters\\appearances\\main_npc\\silverhand.app", r"noplotarmor\\wound_donors\\silverhand.app", "silverhand");
+    this.Add(r"base\\characters\\appearances\\main_npc\\placide.app", r"noplotarmor\\wound_donors\\placide.app", "placide");
+    this.Add(r"base\\characters\\appearances\\main_npc\\royce.app", r"noplotarmor\\wound_donors\\royce.app", "royce");
+    this.Add(r"base\\characters\\appearances\\main_npc\\dumdum.app", r"noplotarmor\\wound_donors\\dumdum.app", "dumdum");
+    this.Add(r"base\\characters\\appearances\\main_npc\\brick.app", r"noplotarmor\\wound_donors\\brick.app", "brick");
     // Registered last so explicit story donors fire before the universal fallback.
     this.universal = NPAUniversalWounds.Create();
   }

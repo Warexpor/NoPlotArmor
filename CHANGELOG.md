@@ -7,6 +7,7 @@ All notable changes use SemVer.
 Fixed:
 * Wakako gore: `wakako_okada.app` (and other story apps without body-type suffixes — `celebrity_chrome`, `us_cracks_band`, `weldon_holt`, `thompson`, `josh*`, `psycho`, `sebastian_perez`) no longer fall through the universal wound fallback. `PickDonor` name lists extended; all four `Character` records verified present in `tweakdb.bin`/`tweakdb_ep1.bin` via TDBID hash check.
 * Spawner: Arasaka family added (all records verified in TweakDB) — Hanako (`Character.Hanako`), Yorinobu (`Character.Yorinobu`), Saburo (`Character.Saburo`), Michiko (`Character.Michiko`, AMM category `Arasaka`). Featured list + catalog entries + explicit donor registrations.
+* Spawner: six more verified story NPCs — Johnny Silverhand (`Character.Silverhand`, also featured), Placide (`Character.Placide`), Royce (`Character.Royce`), Dum Dum (`Character.DumDum`), Brick (`Character.Brick`), Meredith Stout (`Character.Stout`) — plus wound-fallback keywords and explicit donor slots for all of them. Brigitte, Sasquatch, Hellman, Oda found under no obvious record name; parked until their IDs are dug up.
 * Cries split by design: finisher-death voice lives here (death inside a finisher workspot plays `hit_reaction_heavy` once in the victim's own voiceset, gated on the NPA master switch). Downed-but-alive loop cries stay in the standalone DownedCries mod (vanilla has none, and bundling them with NPA would tie a harmless ambience mod to a game-breaking one).
 
 ## [0.2.0] — 2026-11-17
