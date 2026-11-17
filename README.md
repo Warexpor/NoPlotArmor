@@ -66,11 +66,18 @@ Legacy (from older names, remove if present):
 * Nonlethal / fist-fight hits keep vanilla rules and will not kill.
 * Save/load across sessions works for toggles, but long-term quest side effects are untested.
 
+## Pairs well with
+
+* GoreRunner (Blood and Carnage Overhaul) — gore visuals: gibs, blood, remade gore models. https://www.nexusmods.com/cyberpunk2077/mods/24210
+* RELENTLESS - Live Dismemberment — limbs come off living enemies. https://www.nexusmods.com/cyberpunk2077/mods/35703
+* Civilian Dismemberment (Collateral Damage) — technique source for our wound injection. https://www.nexusmods.com/cyberpunk2077/mods/36454
+* Use Weapons and Quick Slots Everywhere — draw and shoot in safe zones, no Action Blocked popup. https://www.nexusmods.com/cyberpunk2077/mods/28411
+* Gameplay Restrictions - UNLOCKED — sprint, jump and dodge in safe areas and while carrying bodies. https://www.nexusmods.com/cyberpunk2077/mods/10946
+
 ## Credits
 
 * Character list derived from Appearance Menu Mod public catalog.
 * Wound injection technique adapted from Collateral Damage's WoundInject pattern.
-* Pairs well with Relentless Live Dismember (separate mod).
 
 ## Versioning
 
