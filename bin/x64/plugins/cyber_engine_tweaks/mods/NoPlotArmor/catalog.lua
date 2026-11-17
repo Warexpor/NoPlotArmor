@@ -103,7 +103,6 @@ return {
   {"Jacob Long", "Character.q302_jacob"},
   {"Jason Foreman", "Character.sts_ep1_03_gunfight_citizen_jason"},
   {"Jefferson Peralez", "Character.Jefferson_Peralez"},
-  {"Johnny Silverhand", "Character.Silverhand"},
   {"Jermaine Norton", "Character.Riot_Bouncer"},
   {"Jesse Cox", "Character.mq012_stud"},
   {"JigJig Hologirl", "Character.q105_jigjig_hologram"},

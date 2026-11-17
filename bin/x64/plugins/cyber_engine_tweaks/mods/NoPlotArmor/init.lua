@@ -29,8 +29,7 @@ for _, id in ipairs({
   "Character.Ozob", "Character.Wilson", "Character.sq021_joss", "Character.sq023_joshua",
   "Character.q101_spider_murphy", "Character.Tom", "Character.sq024_dominic", "Character.mq303_lina",
   "Character.sq017_blue_moon", "Character.sq017_red_menace", "Character.sq017_purple_force",
-  "Character.Hanako", "Character.Yorinobu", "Character.Saburo", "Character.Michiko",
-  "Character.Silverhand"
+  "Character.Hanako", "Character.Yorinobu", "Character.Saburo", "Character.Michiko"
 }) do featured[id] = true end
 local fireAuthApplied = false
 local hitFlagsFlipped = false
