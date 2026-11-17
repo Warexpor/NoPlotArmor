@@ -29,3 +29,17 @@ public final func PlayFinisherGameEffect(const targetPuppet: ref<GameObject>, in
   }
   return wrappedMethod(targetPuppet, instigator, hasFromFront, hasFromBack);
 }
+
+// Backup for finisher types that never call PlayFinisherGameEffect: bark at
+// death while the finisher workspot tag is still on the victim. Fires later
+// than the hook above, so with both live you hear a grab grunt plus a death
+// groan — intended, not a double-play bug.
+@wrapMethod(NPCPuppet)
+protected cb func OnDeath(evt: ref<gameDeathEvent>) -> Bool {
+  if IsDefined(this) && this.IsAttached() && !this.IsCharacterChildren() && !this.IsRagdolling()
+    && this.HasWorkspotTag(n"FinisherWorkspot") && NPAControl.Enabled(this.GetGame()) {
+    FTLog(s"[NoPlotArmor] finisher cry (death) for \(TDBID.ToStringDEBUG(this.GetRecordID())) \(EntityID.ToDebugString(this.GetEntityID()))");
+    this.NPA_CryBark();
+  }
+  return wrappedMethod(evt);
+}
