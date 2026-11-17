@@ -1,6 +1,7 @@
-module NoPlotArmorCries
+module NoPlotArmor
 
-// NoPlotArmor finisher voice (0.2.1-dev). Finishers run the victim through a
+// NoPlotArmor finisher voice (0.2.1-dev). Same module as the rest of the mod:
+// cross-module class references do not resolve (RedRequire flags them as a
 // workspot that otherwise leaves them silent: no hit lands during the grab,
 // so no hit reaction ever voices, and the workspot suppresses native
 // reactions. Cry once on death in a finisher workspot, voiced by the victim's
