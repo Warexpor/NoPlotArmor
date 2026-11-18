@@ -22,7 +22,7 @@ private final func NPA_CryBark() -> Void {
 @wrapMethod(FinisherAttackEvents)
 public final func PlayFinisherGameEffect(const targetPuppet: ref<GameObject>, instigator: ref<GameObject>, const hasFromFront: Bool, const hasFromBack: Bool) -> Bool {
   let npc = targetPuppet as NPCPuppet;
-  if IsDefined(npc) && npc.IsAttached() && !npc.IsCharacterChildren() && !npc.IsRagdolling()
+  if IsDefined(npc) && npc.IsAttached() && !npc.IsRagdolling()
     && NPAControl.Enabled(targetPuppet.GetGame()) {
     FTLog(s"[NoPlotArmor] finisher cry for \(TDBID.ToStringDEBUG(npc.GetRecordID())) \(EntityID.ToDebugString(npc.GetEntityID()))");
     npc.NPA_CryBark();
@@ -36,7 +36,7 @@ public final func PlayFinisherGameEffect(const targetPuppet: ref<GameObject>, in
 // groan — intended, not a double-play bug.
 @wrapMethod(NPCPuppet)
 protected cb func OnDeath(evt: ref<gameDeathEvent>) -> Bool {
-  if IsDefined(this) && this.IsAttached() && !this.IsCharacterChildren() && !this.IsRagdolling()
+  if IsDefined(this) && this.IsAttached() && !this.IsRagdolling()
     && this.HasWorkspotTag(n"FinisherWorkspot") && NPAControl.Enabled(this.GetGame()) {
     FTLog(s"[NoPlotArmor] finisher cry (death) for \(TDBID.ToStringDEBUG(this.GetRecordID())) \(EntityID.ToDebugString(this.GetEntityID()))");
     this.NPA_CryBark();

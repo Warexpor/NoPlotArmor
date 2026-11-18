@@ -29,7 +29,8 @@ for _, id in ipairs({
   "Character.Ozob", "Character.Wilson", "Character.sq021_joss", "Character.sq023_joshua",
   "Character.q101_spider_murphy", "Character.Tom", "Character.sq024_dominic", "Character.mq303_lina",
   "Character.sq017_blue_moon", "Character.sq017_red_menace", "Character.sq017_purple_force",
-  "Character.Hanako", "Character.Yorinobu", "Character.Saburo", "Character.Michiko"
+  "Character.Hanako", "Character.Yorinobu", "Character.Saburo", "Character.Michiko",
+  "Character.sq021_joss_kid_boy", "Character.sq021_joss_kid_girl", "Character.sq029_joss_kid_boy_vr", "Character.sq029_joss_kid_girl_vr", "Character.q000_kid_parking_security"
 }) do featured[id] = true end
 local fireAuthApplied = false
 local hitFlagsFlipped = false
@@ -39,6 +40,12 @@ local verboseLogging = false
 local ownedFireSafe = false
 local ownedFireFriendly = false
 local neutralTimer = 0
+-- Kid Character records flipped to hittable this session (record string -> true).
+-- Covers kid records outside the TweakXL yaml: parsed from the inspect string
+-- of whatever the crosshair is on. CET Lua has no SetFlat overload problem.
+-- Throttled to 1 Hz: the per-frame Describe + TweakDB reads stuttered aim.
+local kidRecordsFlipped = {}
+local kidFlipTimer = 0
 
 local function saveRetaliationSetting()
   local ok, err = pcall(function()
@@ -190,6 +197,30 @@ registerForEvent("onUpdate", function(dt)
       if modEnabled then
         local target = Game.GetTargetingSystem():GetLookAtObject(player, false, false)
         player:NPA_UpdateShotTarget(target or player, dt)
+        -- Dynamic kid flip: any kid record the crosshair lands on gets
+        -- isChild=false once per session, so unknown world-kid records work
+        -- without being listed in the TweakXL yaml. Checked at 1 Hz.
+        kidFlipTimer = kidFlipTimer + dt
+        if target and target:IsNPC() and kidFlipTimer >= 1.0 then
+          kidFlipTimer = 0
+          pcall(function()
+            local desc = tostring(target:NoPlotArmor_Describe())
+            local record = desc:match("record=([^%s]+)")
+            if record and record:find("Character%.") and not kidRecordsFlipped[record] then
+              kidRecordsFlipped[record] = true
+              if desc:find("child=true") or record:lower():find("kid") or record:lower():find("child") then
+                if TweakDB:SetFlat(record .. ".isChild", false) and TweakDB:Update(record) then
+                  local liveChild = tostring(TweakDB:GetFlat(record .. ".isChild"))
+                  local livePreset = tostring(TweakDB:GetFlat(record .. ".reactionPreset"))
+                  print(LOG_PREFIX .. "Kid record flipped hittable: " .. record .. " isChild=" .. liveChild .. " preset=" .. livePreset)
+                  status = "Kid record: " .. record .. " isChild=" .. liveChild .. " preset=" .. livePreset .. ". Save/reload if this one still ghosts."
+                else
+                  print(LOG_PREFIX .. "Kid record flip FAILED: " .. record)
+                end
+              end
+            end
+          end)
+        end
       end
     end
   end)

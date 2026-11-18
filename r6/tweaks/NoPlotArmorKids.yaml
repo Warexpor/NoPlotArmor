@@ -1,0 +1,149 @@
+# No Plot Armor — kid collision fix (TweakXL, same technique as Beatable Brats).
+# Bullets ghost through kids because of a pre-pipeline filter. Every known kid
+# record gets isChild=false; records whose reaction preset is the Child type
+# (the engine IsCharacterChildren check reads the preset type, not isChild)
+# get ReactionPresets.Civilian_Passive instead, so they read as civilians.
+# Requires TweakXL; without it this file is ignored. Reverts cleanly on uninstall.
+Character.ChildAverage:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive
+Character.ChildPoor:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive
+Character.ChildPoorDE:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive
+Character.ChildRich:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive
+Character.CreoleChild:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive
+Character.CreoleChildDE:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive
+Character.ep1_combat_zone_citizen_stacks_child:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive
+Character.ep1_combat_zone_citizen_stacks_child_savable:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive
+Character.mq001_aldecaldo_child:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive
+Character.mq012_kids:
+  isChild: false
+  disableDefeatedState: true
+Character.mq012_ripperdoc_kid:
+  isChild: false
+  disableDefeatedState: true
+Character.mq025_kid:
+  isChild: false
+  disableDefeatedState: true
+Character.mws_cz_04_kid:
+  isChild: false
+  disableDefeatedState: true
+Character.mws_hey_01_girl:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive
+Character.q000_kid_parking_security:
+  isChild: false
+  disableDefeatedState: true
+Character.q000_roadhouse_town_jaime:
+  isChild: false
+  disableDefeatedState: true
+Character.q000_roadhouse_town_kids:
+  isChild: false
+  disableDefeatedState: true
+Character.q114_nomad_child:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive
+Character.q302_protester_civilian_child:
+  isChild: false
+  disableDefeatedState: true
+Character.q304_transmitter_kid_01:
+  isChild: false
+  disableDefeatedState: true
+Character.q304_transmitter_kid_02:
+  isChild: false
+  disableDefeatedState: true
+Character.q306_terminal_boy_01:
+  isChild: false
+  disableDefeatedState: true
+Character.q306_terminal_boy_02:
+  isChild: false
+  disableDefeatedState: true
+Character.q306_terminal_boy_03:
+  isChild: false
+  disableDefeatedState: true
+Character.q306_terminal_boy_04:
+  isChild: false
+  disableDefeatedState: true
+Character.q306_terminal_boy_05:
+  isChild: false
+  disableDefeatedState: true
+Character.q306_terminal_boy_06:
+  isChild: false
+  disableDefeatedState: true
+Character.q306_terminal_boy_07:
+  isChild: false
+  disableDefeatedState: true
+Character.q306_terminal_boy_08:
+  isChild: false
+  disableDefeatedState: true
+Character.q306_terminal_boy_09:
+  isChild: false
+  disableDefeatedState: true
+Character.q306_terminal_boy_10:
+  isChild: false
+  disableDefeatedState: true
+Character.q306_terminal_boy_11:
+  isChild: false
+  disableDefeatedState: true
+Character.q306_terminal_boy_12:
+  isChild: false
+  disableDefeatedState: true
+Character.q306_terminal_children:
+  isChild: false
+  disableDefeatedState: true
+Character.sq021_joss_kid_boy:
+  isChild: false
+  disableDefeatedState: true
+Character.sq021_joss_kid_girl:
+  isChild: false
+  disableDefeatedState: true
+Character.sq029_joss_kid_boy_vr:
+  isChild: false
+  disableDefeatedState: true
+Character.sq029_joss_kid_girl_vr:
+  isChild: false
+  disableDefeatedState: true
+Character.sts_ep1_03_gunfight_citizen_jason:
+  isChild: false
+  disableDefeatedState: true
+Character.sts_ep1_03_gunfight_citizen_stacks_child:
+  isChild: false
+  disableDefeatedState: true
+Character.wst_ep1_ctz_101_child:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive
+Character.wst_ep1_ctz_106_child_01:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive
+Character.wst_ep1_ctz_106_child_02:
+  isChild: false
+  disableDefeatedState: true
+  reactionPreset: ReactionPresets.Civilian_Passive

@@ -1,6 +1,6 @@
 module NoPlotArmor
 
-// No Plot Armor v0.2.1 — killable story NPCs, unified wound injection, story spawner kept.
+// No Plot Armor v0.2.1 — killable story NPCs including children, unified wound injection, story spawner kept.
 public static func NPA_Version() -> String { return "0.2.1"; }
 
 
@@ -26,11 +26,6 @@ public class NPAControl extends ScriptableService {
   }
   public final func Register(npc: wref<NPCPuppet>) -> Void {
     if !IsDefined(npc) { return; }
-    // Children from older saves may carry our Mortal override; strip it once.
-    if npc.IsCharacterChildren() {
-      if npc.npaProtectionApplied { npc.NPA_RemoveProtection(); }
-      return;
-    }
     RWLock.Acquire(this.lock);
     let i = 0;
     while i < ArraySize(this.npcs) {
@@ -63,10 +58,6 @@ public class NPAControl extends ScriptableService {
   }
   public final func RefreshTarget(npc: wref<NPCPuppet>) -> Void {
     if !IsDefined(npc) { return; }
-    if npc.IsCharacterChildren() {
-      if npc.npaProtectionApplied { npc.NPA_RemoveProtection(); }
-      return;
-    }
     RWLock.Acquire(this.lock);
     if !this.disabled && IsDefined(npc) {
       // Some quest actors already exist when the service becomes available.
@@ -113,9 +104,6 @@ private let npaRemovedInvulnerableOverrides: array<CName>;
 @addMethod(NPCPuppet)
 public final func NPA_ApplyProtection() -> Void {
   if this.npaProtectionApplied { return; }
-  // Children stay protected by design: the engine ghosts hits on them before
-  // any damage pipeline, and this mod never overrides that.
-  if this.IsCharacterChildren() { return; }
   let god = GameInstance.GetGodModeSystem(this.GetGame());
   let id = this.GetEntityID();
   god.EnableOverride(id, gameGodModeType.Mortal, n"NoPlotArmor");
@@ -126,7 +114,6 @@ public final func NPA_ApplyProtection() -> Void {
 // actually removed so the master switch can restore it while the NPC exists.
 @addMethod(NPCPuppet)
 public final func NPA_RefreshProtection() -> Void {
-  if this.IsCharacterChildren() { return; }
   let god = GameInstance.GetGodModeSystem(this.GetGame());
   let id = this.GetEntityID();
   let sources = god.GetGodModeSources(id, gameGodModeType.Immortal);
@@ -238,6 +225,49 @@ public final func PreAttack() {
     this.AddFlag(hitFlag.FriendlyFire, n"NoPlotArmor");
     this.AddFlag(hitFlag.IgnoreImmortalityModes, n"NoPlotArmor");
     this.AddFlag(hitFlag.IgnoreStatPoolCustomLimit, n"NoPlotArmor");
+    // Kid hit crutch: kid bodies ship with no bullet/melee hitboxes, so the
+    // physics query never delivers a hit event no matter the flags. But the
+    // targeting query DOES see them (crosshair + inspect work). So a shot
+    // fired while genuinely aiming at a kid deals scripted damage instead:
+    // HP drain through the stat pools (death flow included) plus the vanilla
+    // blood game-effect. Shots that miss the kid do nothing — the crosshair
+    // is the hit test. Same path covers melee swings (also PreAttack).
+    // Nonlethal/fistfight rules preserved: no crutch for those attacks.
+    if !this.HasFlag(hitFlag.Nonlethal) {
+      let inst = this.GetInstigator();
+      let game = inst.GetGame();
+      let player = inst as PlayerPuppet;
+      if IsDefined(player)
+        && !StatusEffectSystem.ObjectHasStatusEffect(player, t"GameplayRestriction.FistFight") {
+        let target = GameInstance.GetTargetingSystem(game).GetLookAtObject(player, false, false) as NPCPuppet;
+        if IsDefined(target) && target.NPA_IsKid() && !target.IsDead()
+          && !StatusEffectSystem.ObjectHasStatusEffect(target, t"GameplayRestriction.FistFight") {
+          let kidID = Cast<StatsObjectID>(target.GetEntityID());
+          let pools = GameInstance.GetStatPoolsSystem(game);
+          let maxHP = pools.GetStatPoolMaxPointValue(kidID, gamedataStatPoolType.Health);
+          if maxHP > 0.0 {
+            let curHP = pools.GetStatPoolValue(kidID, gamedataStatPoolType.Health);
+            if curHP > 0.0 {
+              let chunk = maxHP * 0.34;
+              let newHP = curHP - chunk;
+              if newHP < 0.0 { newHP = 0.0; }
+              pools.RequestSettingStatPoolValue(kidID, gamedataStatPoolType.Health, newHP, null, true);
+              GameObjectEffectHelper.StartEffectEvent(target, n"blood_headshot");
+              // Kids have no death animations: the reaction holds a T-pose
+              // that only collapses on a later hit. Force ragdoll shortly
+              // after the killing blow instead (same factory the death
+              // reaction itself uses as fallback).
+              if newHP <= 0.0 {
+                target.SetDisableRagdoll(false);
+                GameInstance.GetDelaySystem(game).DelayEvent(target, CreateForceRagdollEvent(n"NoPlotArmor:KidRagdoll"), 0.3, true);
+              }
+              target.NoPlotArmor_RecordOnHit();
+              target.NoPlotArmor_RecordHit(true, this, chunk, curHP, false);
+            }
+          }
+        }
+      }
+    }
     // Fire-path telemetry: proves whether script preactions run for a given
     // weapon. Throttled: 3 logs per 2 minutes of game time.
     let player = this.GetInstigator() as PlayerPuppet;
@@ -296,9 +326,6 @@ private final func NPA_RestoreShotTarget() -> Void {
 @addMethod(PlayerPuppet)
 public final func NPA_UpdateShotTarget(candidate: wref<GameObject>, dt: Float) -> Void {
   let npc = candidate as NPCPuppet;
-  if IsDefined(npc) && npc.IsCharacterChildren() {
-    npc = null;
-  }
   if !IsDefined(npc) || npc.IsDead() {
     npc = null;
   }
@@ -337,7 +364,7 @@ public final func NPA_UpdateShotTarget(candidate: wref<GameObject>, dt: Float) -
 @wrapMethod(DamageSystem)
 private final func PreProcess(hitEvent: ref<gameHitEvent>, cache: ref<CacheData>) -> Bool {
   let preNpc = IsDefined(hitEvent) ? hitEvent.target as NPCPuppet : null;
-  if IsDefined(preNpc) && !preNpc.IsCharacterChildren() && NPAControl.Enabled(preNpc.GetGame()) && IsDefined(hitEvent.attackData) {
+  if IsDefined(preNpc) && NPAControl.Enabled(preNpc.GetGame()) && IsDefined(hitEvent.attackData) {
     hitEvent.attackData.AddFlag(hitFlag.IgnoreImmortalityModes, n"NoPlotArmor");
     hitEvent.attackData.AddFlag(hitFlag.IgnoreStatPoolCustomLimit, n"NoPlotArmor");
   }
@@ -385,7 +412,7 @@ private final func ModifyHitFlagsForPlayer(hitEvent: ref<gameHitEvent>, cache: r
       }
       FTLog(s"[NoPlotArmor] HitFlagsIn attack=\(atk) friendlyIn=\(incoming) weapon=\(wStr) attackRec=\(aStr) n=\(player.npaFlagLogs)");
     };
-    if IsDefined(hitEvent) && IsDefined(hitEvent.target as NPCPuppet) && !( (hitEvent.target as NPCPuppet).IsCharacterChildren() ) && NPAControl.Enabled(hitEvent.target.GetGame()) && IsDefined(hitEvent.attackData) {
+    if IsDefined(hitEvent) && IsDefined(hitEvent.target as NPCPuppet) && NPAControl.Enabled(hitEvent.target.GetGame()) && IsDefined(hitEvent.attackData) {
       hitEvent.attackData.AddFlag(hitFlag.FriendlyFire, n"NoPlotArmor");
     }
   }
@@ -404,16 +431,27 @@ protected final func CanDieCondition(opt doNotCheckAttackData: Bool) -> Bool {
       return wrappedMethod(doNotCheckAttackData);
     }
   }
-  if IsDefined(this.m_ownerNPC) && !this.m_ownerNPC.IsCharacterChildren() && NPAControl.Enabled(this.m_ownerNPC.GetGame()) { return true; }
+  if IsDefined(this.m_ownerNPC) && NPAControl.Enabled(this.m_ownerNPC.GetGame()) { return true; }
   return wrappedMethod(doNotCheckAttackData);
 }
 
 // Called only for the spawner's tagged entities, never quest-owned originals.
 @addMethod(NPCPuppet)
 public final func NPA_NeutralizeSpawn(player: wref<PlayerPuppet>) -> Void {
-  if !IsDefined(player) || this.IsDead() || this.IsCharacterChildren() { return; }
+  if !IsDefined(player) || this.IsDead() { return; }
   GameObject.ChangeAttitudeToNeutral(this, player);
   GameObject.ChangeAttitudeToNeutral(player, this);
+}
+
+// Kid detection that survives the isChild record override (TweakXL yaml):
+// native check plus record-ID match, so flipped kids are still recognized
+// as kids for retaliation exclusion and corpse-gore fallback.
+@addMethod(NPCPuppet)
+public final func NPA_IsKid() -> Bool {
+  if this.IsCharacterChildren() { return true; }
+  let s = TDBID.ToStringDEBUG(this.GetRecordID());
+  if StrContains(s, "kid") || StrContains(s, "child") || StrContains(s, "Kid") || StrContains(s, "Child") { return true; }
+  return false;
 }
 
 @addField(NPCPuppet)
@@ -423,7 +461,7 @@ private let npaSpawnHealthAdjusted: Bool;
 @addMethod(NPCPuppet)
 public final func NPA_AdjustSpawnHealth() -> Bool {
   if this.npaSpawnHealthAdjusted { return true; }
-  if this.IsBoss() || this.IsCharacterChildren() { this.npaSpawnHealthAdjusted = true; return true; }
+  if this.IsBoss() { this.npaSpawnHealthAdjusted = true; return true; }
   let id = Cast<StatsObjectID>(this.GetEntityID());
   let pools = GameInstance.GetStatPoolsSystem(this.GetGame());
   let stats = GameInstance.GetStatsSystem(this.GetGame());
@@ -451,7 +489,15 @@ public final func NoPlotArmor_Describe() -> String {
   let limbs: DismemberedLimbCount;
   if IsDefined(component) { limbs = component.GetDismemberedLimbCount(); }
   let spawned = this.HasTag(n"NoPlotArmor_Spawn") || this.HasTag(n"NPCOmegaGore_Spawn") || this.HasTag(n"OmegaNPC_Spawn");
-  return s"record=\(TDBID.ToStringDEBUG(this.GetRecordID())) entity=\(EntityID.ToDebugString(id)) spawned=\(spawned) appearance=\(this.GetCurrentAppearanceName()) hp%=\(hp) immortal=\(god.HasGodMode(id, gameGodModeType.Immortal)) immSrcN=\(ArraySize(immSrc)) invulnerable=\(god.HasGodMode(id, gameGodModeType.Invulnerable)) invSrcN=\(ArraySize(invSrc)) invulnerableStat=\(invStat) boss=\(this.IsBoss()) child=\(this.IsCharacterChildren()) defeat=\(this.IsDefeatMechanicActive()) dead=\(this.IsDead()) defeated=\(ScriptedPuppet.IsDefeated(this)) aboutDie=\(this.IsAboutToDie()) aboutDef=\(this.IsAboutToBeDefeated()) crowd=\(this.IsCrowd()) dismemberment=\(IsDefined(component)) fleshLimbs=\(limbs.fleshDismemberments) cyberLimbs=\(limbs.cyberDismemberments) onHits=\(this.npaOnHitCount) hits=\(this.npaHitCount) hitInfo=[\(this.npaLastHit)] goreChecks=\(this.npaGoreCount) goreInfo=[\(this.npaLastGore)] deaths=\(this.npaDeathCount) deathInfo=[\(this.npaLastDeath)]";
+  // Live reaction preset: the check behind IsCharacterChildren reads the
+  // component preset type, not the record flat — show what it actually is.
+  let presetStr = "none";
+  let stim = this.GetStimReactionComponent();
+  if IsDefined(stim) {
+    let rp = stim.GetReactionPreset();
+    if IsDefined(rp) { presetStr = TDBID.ToStringDEBUG(rp.GetID()); }
+  }
+  return s"record=\(TDBID.ToStringDEBUG(this.GetRecordID())) entity=\(EntityID.ToDebugString(id)) spawned=\(spawned) appearance=\(this.GetCurrentAppearanceName()) hp%=\(hp) immortal=\(god.HasGodMode(id, gameGodModeType.Immortal)) immSrcN=\(ArraySize(immSrc)) invulnerable=\(god.HasGodMode(id, gameGodModeType.Invulnerable)) invSrcN=\(ArraySize(invSrc)) invulnerableStat=\(invStat) boss=\(this.IsBoss()) child=\(this.IsCharacterChildren()) livePreset=\(presetStr) defeat=\(this.IsDefeatMechanicActive()) dead=\(this.IsDead()) defeated=\(ScriptedPuppet.IsDefeated(this)) aboutDie=\(this.IsAboutToDie()) aboutDef=\(this.IsAboutToBeDefeated()) crowd=\(this.IsCrowd()) dismemberment=\(IsDefined(component)) fleshLimbs=\(limbs.fleshDismemberments) cyberLimbs=\(limbs.cyberDismemberments) onHits=\(this.npaOnHitCount) hits=\(this.npaHitCount) hitInfo=[\(this.npaLastHit)] goreChecks=\(this.npaGoreCount) goreInfo=[\(this.npaLastGore)] deaths=\(this.npaDeathCount) deathInfo=[\(this.npaLastDeath)]";
 }
 
 // The player's friendly-target flag drives weapon-safe and attack checks.
@@ -503,7 +549,8 @@ public class NPARetaliationEvent extends Event {
 @addMethod(NPCPuppet)
 protected cb func OnNPARetaliationEvent(evt: ref<NPARetaliationEvent>) -> Bool {
   let player = evt.player;
-  if !IsDefined(player) || this.IsCharacterChildren() || !NPAControl.Enabled(this.GetGame()) || !player.npaRetaliationEnabled || this.IsDead() { return false; }
+  // Kids stay out of retaliation: no combat AI, hostile attitude risks stuck behavior.
+  if !IsDefined(player) || this.NPA_IsKid() || !NPAControl.Enabled(this.GetGame()) || !player.npaRetaliationEnabled || this.IsDead() { return false; }
   let wasHostile = Equals(GameObject.GetAttitudeBetween(this, player), EAIAttitude.AIA_Hostile);
   if !wasHostile { GameObject.ChangeAttitudeToHostile(this, player); }
   // A hostile attitude alone does not register the player as an AI threat.
@@ -526,10 +573,10 @@ protected cb func OnNPARetaliationEvent(evt: ref<NPARetaliationEvent>) -> Bool {
 @wrapMethod(GameObject)
 protected cb func OnHit(evt: ref<gameHitEvent>) -> Bool {
   let npc = this as NPCPuppet;
-  if IsDefined(npc) && !npc.IsCharacterChildren() && IsDefined(evt) && IsDefined(evt.attackData) && IsDefined(evt.attackData.GetInstigator()) && evt.attackData.GetInstigator().IsPlayer() {
+  if IsDefined(npc) && IsDefined(evt) && IsDefined(evt.attackData) && IsDefined(evt.attackData.GetInstigator()) && evt.attackData.GetInstigator().IsPlayer() {
     npc.NoPlotArmor_RecordOnHit();
     let player = evt.attackData.GetInstigator() as PlayerPuppet;
-    if IsDefined(player) && NPAControl.Enabled(player.GetGame()) && player.npaRetaliationEnabled && !npc.IsDead() {
+    if IsDefined(player) && NPAControl.Enabled(player.GetGame()) && player.npaRetaliationEnabled && !npc.IsDead() && !npc.NPA_IsKid() {
       let request = new NPARetaliationEvent();
       request.player = player;
       npc.QueueEvent(request);
@@ -554,8 +601,9 @@ protected cb func OnDeath(evt: ref<gameDeathEvent>) -> Bool {
 // TweakDB fix attempt for living-friendly bullet collision: the runtime
 // FriendlyFire flag is set from creation yet bullets still ghost friendlies,
 // and no attack record uses the WithFriendlyFire effector. The remaining
-// record-level lever is the attack's own HitFlags. This flips FriendlyFire
-// onto the shared hitscan record at boot (runtime only, reverts if removed).
+// record-level lever is the attack's own HitFlags. This ensures all three
+// bypass flags are present on the shared hitscan record at boot (runtime
+// only, reverts if removed).
 public class NPAAttackFlagTweak extends ScriptableTweak {
   protected cb func OnApply() -> Void {
     let id = t"Attacks.Bullet_GameEffect";
@@ -565,22 +613,43 @@ public class NPAAttackFlagTweak extends ScriptableTweak {
       return;
     }
     let cur = rec.HitFlags();
-    let i = 0;
-    while i < ArraySize(cur) {
-      if Equals(cur[i], "FriendlyFire") {
-        FTLog("[NoPlotArmor] FriendlyFire already present on Bullet_GameEffect");
-        return;
+    let want: array<String> = ["FriendlyFire", "IgnoreImmortalityModes", "IgnoreStatPoolCustomLimit"];
+    let added = 0;
+    let w = 0;
+    while w < ArraySize(want) {
+      let i = 0;
+      let found = false;
+      while i < ArraySize(cur) {
+        if Equals(cur[i], want[w]) { found = true; break; }
+        i += 1;
       }
-      i += 1;
+      if !found { ArrayPush(cur, want[w]); added += 1; }
+      w += 1;
     }
-    ArrayPush(cur, "FriendlyFire");
+    if added == 0 {
+      FTLog("[NoPlotArmor] bypass flags already present on Bullet_GameEffect");
+      return;
+    }
     if TweakDBManager.SetFlat(id + t".hitFlags", cur) && TweakDBManager.UpdateRecord(id) {
-      FTLog("[NoPlotArmor] FriendlyFire added to Bullet_GameEffect");
+      FTLog(s"[NoPlotArmor] added \(added) bypass flags to Bullet_GameEffect");
     } else {
       FTLog("[NoPlotArmor] FAILED to set hitFlags flat on Bullet_GameEffect");
     }
   }
 }
+
+// Child collision fix: bullets ghosting through kids is a pre-pipeline filter.
+// Same technique as Beatable Brats: r6/tweaks/NoPlotArmorKids.yaml flips
+// isChild to false on every known kid record via TweakXL at boot, and moves
+// the 14 records whose reaction preset is the Child type (the check behind
+// NPCPuppet.IsCharacterChildren reads the StimReactionComponent preset type,
+// not the isChild flat) to ReactionPresets.Civilian_Passive so they read as
+// civilians. Quest-scene kids already on NoReaction/Neutral/Passive keep them.
+// (A Redscript boot tweak was tried and reverted: this script build has no
+// SetFlat bool overload, so TweakXL owns it.)
+// Known engine side effect (same as Beatable Brats): damaged kids can stretch
+// to adult size on injury/death animations, since CDPR rigged no
+// child-specific animations.
 
 // Hit reaction initializes its thresholds before the spawn health modifier is
 // applied. Rescale its cached thresholds once for the adjusted spawned copy.
@@ -588,7 +657,7 @@ public class NPAAttackFlagTweak extends ScriptableTweak {
 private let npaScaledHealthThresholds: Bool;
 @wrapMethod(HitReactionComponent)
 protected final func ProcessWoundsAndDismemberment() -> Void {
-  if !this.npaScaledHealthThresholds && IsDefined(this.m_ownerNPC) && !this.m_ownerNPC.IsCharacterChildren()
+  if !this.npaScaledHealthThresholds && IsDefined(this.m_ownerNPC)
     && NPAControl.Enabled(this.m_ownerNPC.GetGame())
     && (this.m_ownerNPC.HasTag(n"NoPlotArmor_Spawn") || this.m_ownerNPC.HasTag(n"NPCOmegaGore_Spawn") || this.m_ownerNPC.HasTag(n"OmegaNPC_Spawn")) && this.m_totalHealth > 0.0 {
     let id = Cast<StatsObjectID>(this.m_ownerNPC.GetEntityID());
@@ -628,6 +697,20 @@ protected final func DismembermentConditions() -> Bool {
       // corpse regions on the copy spawned by this mod, never a living NPC.
       if !result && NPAControl.Enabled(this.m_ownerNPC.GetGame()) && Equals(this.m_ownerNPC.GetRecordID(), t"Character.Panam")
         && (this.m_ownerNPC.HasTag(n"NoPlotArmor_Spawn") || this.m_ownerNPC.HasTag(n"NPCOmegaGore_Spawn") || this.m_ownerNPC.HasTag(n"OmegaNPC_Spawn"))
+        && this.m_ownerNPC.IsDead()
+        && !this.m_attackData.HasFlag(hitFlag.Nonlethal)
+        && IsDefined(this.m_ownerNPC.GetDismembermentComponent())
+        && index >= 0 && index < ArraySize(this.m_bodyPartDismemberCumulatedDamages)
+        && NotEquals(zone, EHitReactionZone.Special)
+        && this.GetOwnerTotalHealth() > 0.0
+        && dismemberDamage >= this.GetOwnerTotalHealth() * 0.10 {
+        result = true;
+      }
+      // Dead children (world or spawned): same corpse-only fallback. Living
+      // branch stays native; child records typically lack usable corpse
+      // thresholds like Panam's did, so sufficiently damaged corpse regions
+      // are allowed through once dead. Never a living child.
+      if !result && NPAControl.Enabled(this.m_ownerNPC.GetGame()) && this.m_ownerNPC.NPA_IsKid()
         && this.m_ownerNPC.IsDead()
         && !this.m_attackData.HasFlag(hitFlag.Nonlethal)
         && IsDefined(this.m_ownerNPC.GetDismembermentComponent())
@@ -781,8 +864,7 @@ public class NPAUniversalWounds extends IScriptable {
   // Known story names first (covers custom outfits whose path keeps the name,
   // e.g. hyst judy/panam variants), then filename body-type suffixes.
   private func PickDonor(path: String) -> Int32 {
-    // Kids stay whole by design: never inject wounds into child appearances.
-    if StrContains(path, "kid") || StrContains(path, "child") { return 0; }
+    let isChild = StrContains(path, "kid") || StrContains(path, "child");
     if StrContains(path, "judy") || StrContains(path, "panam") || StrContains(path, "rogue")
       || StrContains(path, "evelyn") || StrContains(path, "misty") || StrContains(path, "clair")
       || StrContains(path, "meredith") || StrContains(path, "elizabeth_peralez") || StrContains(path, "alt")
@@ -811,6 +893,11 @@ public class NPAUniversalWounds extends IScriptable {
     if StrContains(path, "woman") || StrContains(path, "_fa") { return 2; }
     if StrContains(path, "_ma") || StrContains(path, "_mb") || StrContains(path, "_mm") { return 1; }
     if StrContains(path, "man_") || StrContains(path, "_mc") { return 1; }
+    if isChild {
+      if StrContains(path, "boy") || StrContains(path, "male") { return 1; }
+      if StrContains(path, "girl") || StrContains(path, "female") { return 2; }
+      return 2;
+    }
     return 0;
   }
 
